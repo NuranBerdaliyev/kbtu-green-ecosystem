@@ -1,0 +1,17 @@
+version: '4.84'
+services:
+  postgres:
+    image: postgis/postgis:17-3.4
+    container_name: kbtu_green_db
+    environment:
+      POSTGRES_USER: green_user
+      POSTGRES_PASSWORD: green_password
+      POSTGRES_DB: kbtu_green_ecosystem
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
