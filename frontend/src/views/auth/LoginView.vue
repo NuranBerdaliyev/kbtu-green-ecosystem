@@ -1,0 +1,64 @@
+<script setup>
+import { reactive } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import BaseInput from '@/components/common/BaseInput.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
+
+const auth = useAuthStore()
+const router = useRouter()
+const route = useRoute()
+
+const form = reactive({ email: '', password: '' })
+
+// Stage 3: add field-level validation and remember the last used email.
+async function submit() {
+  const ok = await auth.login({ ...form })
+  if (ok) router.push(route.query.redirect ?? { name: 'home' })
+}
+</script>
+
+<template>
+  <form class="card auth-form stack" @submit.prevent="submit">
+    <div>
+      <h1>Вход</h1>
+      <p class="text-muted">Используйте корпоративную почту KBTU.</p>
+    </div>
+
+    <BaseInput v-model="form.email" label="Почта" type="email" autocomplete="email" />
+    <BaseInput
+      v-model="form.password"
+      label="Пароль"
+      type="password"
+      autocomplete="current-password"
+    />
+
+    <p v-if="auth.error" class="error">{{ auth.error }}</p>
+
+    <BaseButton type="submit" :loading="auth.loading">Войти</BaseButton>
+
+    <p class="text-muted">
+      Нет аккаунта?
+      <RouterLink :to="{ name: 'register' }" class="link">Зарегистрироваться</RouterLink>
+    </p>
+  </form>
+</template>
+
+<style scoped>
+.auth-form {
+  width: min(380px, 100%);
+}
+
+.error {
+  padding: var(--space-3);
+  background: var(--c-danger-soft);
+  border-radius: var(--radius-sm);
+  color: var(--c-danger);
+  font-size: var(--text-sm);
+}
+
+.link {
+  color: var(--c-moss);
+  font-weight: 600;
+}
+</style>
