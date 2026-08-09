@@ -1,6 +1,8 @@
 package com.example.green.domain.entity;
+
 import com.example.green.domain.enums.WasteType;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import org.locationtech.jts.geom.Point;
 
@@ -15,22 +17,32 @@ public class EcoPointContainer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Название контейнера обязательно")
+    @Size(max = 255, message = "Название слишком длинное")
     @Column(nullable = false, length = 255)
     private String title;
 
+    @NotNull(message = "Локация обязательна")
     @Column(nullable = false, columnDefinition = "geometry(Point,4326)")
     private Point location;
 
+    @NotNull(message = "Тип отхода обязателен")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private WasteType wasteType;
 
+    @NotNull(message = "fullnessPercentage обязателен")
+    @Min(value = 0, message = "fullnessPercentage не может быть меньше 0")
+    @Max(value = 100, message = "fullnessPercentage не может быть больше 100")
     @Column(nullable = false)
     private Integer fullnessPercentage;
 
+    @NotNull(message = "isActive обязателен")
     @Column(nullable = false)
     private Boolean isActive;
 
+    @NotBlank(message = "QR token обязателен")
+    @Size(max = 255, message = "QR token слишком длинный")
     @Column(nullable = false, unique = true, length = 255)
     private String qrCodeToken;
 }

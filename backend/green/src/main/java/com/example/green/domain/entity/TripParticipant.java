@@ -1,5 +1,6 @@
 package com.example.green.domain.entity;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -14,17 +15,21 @@ public class TripParticipant {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "Trip обязателен")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
+    @NotNull(message = "Пассажир обязателен")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "passenger_id", nullable = false)
     private User passenger;
 
+    @NotNull(message = "Время присоединения обязательно")
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
+    @NotNull(message = "isCancelled обязателен")
     @Column(nullable = false)
     private Boolean isCancelled;
 }
