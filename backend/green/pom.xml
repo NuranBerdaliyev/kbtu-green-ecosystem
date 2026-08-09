@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- XML's namespace, schema, version -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
+    <parent><!-- parent external dependencies for autoconfiguring project settings -->
+        <groupId>org.springframework.boot</groupId><!--The one who is the source-->
+        <artifactId>spring-boot-starter-parent</artifactId><!--The one which is the product from the source-->
         <version>4.1.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.example</groupId>
+    <groupId>com.example</groupId><!-- the project source-->
     <artifactId>green</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>green</name>
@@ -103,6 +104,14 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-spatial</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
     </dependencies>
