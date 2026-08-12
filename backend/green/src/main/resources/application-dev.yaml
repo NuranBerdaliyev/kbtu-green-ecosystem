@@ -1,0 +1,19 @@
+spring: #application in dev mode
+  datasource: #datasource
+    url: jdbc:postgresql://localhost:5432/kbtu_green_ecosystem #url for docker container's database
+    username: green_user
+    password: green_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate #checking database without change
+    show-sql: true #SQL logs
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway: #for migrations
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true

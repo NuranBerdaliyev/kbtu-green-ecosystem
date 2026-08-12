@@ -1,16 +1,16 @@
 services:
   postgres:
-    image: postgis/postgis:17-3.4
+    image: postgis/postgis:17-3.4 #PostGIS 3.4, PostgreSQL 17
     container_name: kbtu_green_db
-    environment:
+    environment: #development env names
       POSTGRES_USER: green_user
       POSTGRES_PASSWORD: green_password
       POSTGRES_DB: kbtu_green_ecosystem
     ports:
-      - "5432:5432"
+      - "5432:5432" #ports between host and container
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
+      - postgres_data:/var/lib/postgresql/data #volume place
+    restart: always #restart if container stops suddenly
 
-volumes:
+volumes: #declaration of volumes
   postgres_data:
