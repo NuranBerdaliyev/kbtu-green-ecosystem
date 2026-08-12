@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
-
+--SQL for initializing database
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL,

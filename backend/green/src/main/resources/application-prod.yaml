@@ -1,4 +1,4 @@
-spring:
+spring: #application for prod mode
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
