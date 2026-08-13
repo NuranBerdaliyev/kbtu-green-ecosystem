@@ -34,6 +34,11 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @NotBlank(message = "Пароль обязателен")
+    @Size(min = 60, max = 72, message = "Некорректная длина хеша пароля")
+    @Column(nullable = false, length = 72)
+    private String passwordHash;
+
     @NotNull(message = "Баланс ecoCoins обязателен")
     @Min(value = 0, message = "Баланс ecoCoins не может быть отрицательным")
     @Column(nullable = false)
