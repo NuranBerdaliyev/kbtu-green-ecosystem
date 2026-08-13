@@ -1,3 +1,6 @@
 spring:
   application:
-    name: green
+    name: kbtu-green-ecosystem #application name
+
+  profiles:
+    active: dev #mode
