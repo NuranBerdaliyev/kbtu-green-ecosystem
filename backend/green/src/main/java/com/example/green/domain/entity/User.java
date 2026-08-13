@@ -48,7 +48,12 @@ public class User {
     @NotNull(message = "totalCo2Saved обязателен")
     @DecimalMin(value = "0.0", inclusive = true, message = "totalCo2Saved не может быть отрицательным")
     @Digits(integer = 12, fraction = 3, message = "Некорректный формат totalCo2Saved")
-    @Column(nullable = false, precision = 15, scale = 3)
+    @Column(
+            name = "total_co2_saved",
+            nullable = false,
+            precision = 15,
+            scale = 3
+    )
     private BigDecimal totalCo2Saved;
 
     @NotNull(message = "createdAt обязателен")
