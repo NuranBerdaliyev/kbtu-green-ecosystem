@@ -25,12 +25,19 @@ async function submit() {
       <p class="text-muted">Используйте корпоративную почту KBTU.</p>
     </div>
 
-    <BaseInput v-model="form.email" label="Почта" type="email" autocomplete="email" />
+    <BaseInput
+      v-model="form.email"
+      label="Почта"
+      type="email"
+      autocomplete="email"
+      :error="auth.fieldErrors.email"
+    />
     <BaseInput
       v-model="form.password"
       label="Пароль"
       type="password"
       autocomplete="current-password"
+      :error="auth.fieldErrors.password"
     />
 
     <p v-if="auth.error" class="error">{{ auth.error }}</p>

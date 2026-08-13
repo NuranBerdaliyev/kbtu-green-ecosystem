@@ -74,9 +74,17 @@ http.interceptors.response.use(
       }
     }
 
-    // Normalise the backend error shape agreed in stage 2.
-    const message = response.data?.message ?? 'Что-то пошло не так. Попробуйте ещё раз.'
-    return Promise.reject(Object.assign(new Error(message), { status: response.status }))
+    // Backend error shape (api/error/ApiErrorResponse.java):
+    // { timestamp, status, error, message, path, validationErrors: { field: msg } }
+    const body = response.data ?? {}
+    const message = body.message ?? 'Что-то пошло не так. Попробуйте ещё раз.'
+    return Promise.reject(
+      Object.assign(new Error(message), {
+        status: response.status,
+        // Map field name -> message, so forms can show errors inline.
+        fieldErrors: body.validationErrors ?? {},
+      }),
+    )
   },
 )
 

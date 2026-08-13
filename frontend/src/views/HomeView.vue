@@ -1,13 +1,14 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useGamificationStore } from '@/stores/gamification'
 import { formatNumber, formatCo2 } from '@/utils/format'
+import { ESG_RATING_MAX } from '@/utils/constants'
 
 const auth = useAuthStore()
-const gamification = useGamificationStore()
 
-// Stage 7 fills these from GamificationService.
+// EcoCoins, ESG and CO₂ live on UserResponseDto — there is no separate
+// gamification endpoint. Stage 7 may add one; until then the user object is
+// the single source of truth.
 const modules = [
   {
     to: 'trips',
@@ -31,21 +32,24 @@ const modules = [
   <div class="stack">
     <section>
       <p class="eyebrow">Ваша активность</p>
-      <h1>Здравствуйте, {{ auth.user?.firstName ?? 'студент' }}</h1>
+      <h1>Здравствуйте, {{ auth.firstName || 'студент' }}</h1>
     </section>
 
     <section class="stats">
       <article class="card stat">
         <p class="text-muted">EcoCoins</p>
-        <p class="metric stat__value">{{ formatNumber(gamification.ecoCoins) }}</p>
+        <p class="metric stat__value">{{ formatNumber(auth.user?.ecoCoinsBalance) }}</p>
       </article>
       <article class="card stat">
         <p class="text-muted">ESG-рейтинг</p>
-        <p class="metric stat__value">{{ formatNumber(gamification.esgRating) }}</p>
+        <p class="metric stat__value">
+          {{ formatNumber(auth.user?.esgRating)
+          }}<span class="stat__max">/{{ ESG_RATING_MAX }}</span>
+        </p>
       </article>
       <article class="card stat">
         <p class="text-muted">Сокращено выбросов</p>
-        <p class="metric stat__value">{{ formatCo2(gamification.co2Saved) }}</p>
+        <p class="metric stat__value">{{ formatCo2(auth.user?.totalCo2Saved) }}</p>
       </article>
     </section>
 
@@ -74,6 +78,11 @@ const modules = [
 .stat__value {
   font-size: var(--text-2xl);
   font-weight: 600;
+}
+
+.stat__max {
+  font-size: var(--text-lg);
+  color: var(--c-ink-muted);
 }
 
 .module {

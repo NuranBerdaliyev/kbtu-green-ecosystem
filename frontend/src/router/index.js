@@ -11,7 +11,6 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  // Rehydrate the session once after a hard refresh.
   await auth.restoreSession()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -22,7 +21,7 @@ router.beforeEach(async (to) => {
     return { name: 'home' }
   }
 
-  if (to.meta.roles?.length && !to.meta.roles.some((role) => auth.hasRole(role))) {
+  if (to.meta.roles?.length && !to.meta.roles.includes(auth.role)) {
     return { name: 'home' }
   }
 

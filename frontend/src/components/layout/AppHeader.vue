@@ -1,12 +1,10 @@
 <script setup>
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useGamificationStore } from '@/stores/gamification'
 import { formatNumber } from '@/utils/format'
 import { ROLES } from '@/utils/constants'
 
 const auth = useAuthStore()
-const gamification = useGamificationStore()
 const router = useRouter()
 
 const links = [
@@ -40,11 +38,11 @@ async function signOut() {
 
       <div class="header__side">
         <span class="coins" title="EcoCoins">
-          <span class="metric">{{ formatNumber(gamification.ecoCoins) }}</span>
+          <span class="metric">{{ formatNumber(auth.user?.ecoCoinsBalance) }}</span>
           EC
         </span>
         <RouterLink :to="{ name: 'profile' }" class="profile-link">
-          {{ auth.user?.firstName ?? 'Профиль' }}
+          {{ auth.firstName || 'Профиль' }}
         </RouterLink>
         <button class="signout" type="button" @click="signOut">Выйти</button>
       </div>
