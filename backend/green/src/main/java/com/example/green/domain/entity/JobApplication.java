@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "job_applications",
         indexes = {
-        @Index(name = "idx_job_app_status", columnList = "jobStatus")
+        @Index(name = "idx_job_app_status", columnList = "job_status")
         },
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_job_application_vacancy_student", columnNames = {"vacancy_id", "student_id"})
@@ -31,16 +31,16 @@ public class JobApplication {
     private User student;
 
     @NotNull(message = "Дата подачи обязательна")
-    @Column(nullable = false)
+    @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
     @NotBlank(message = "Cover letter обязателен")
     @Size(min = 10, max = 5000, message = "Cover letter должен быть от 10 до 5000 символов")
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(name = "cover_letter", nullable = false, columnDefinition = "text")
     private String coverLetter;
 
     @NotNull(message = "Статус заявки обязателен")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "job_status", nullable = false, length = 20)
     private JobStatus jobStatus;
 }

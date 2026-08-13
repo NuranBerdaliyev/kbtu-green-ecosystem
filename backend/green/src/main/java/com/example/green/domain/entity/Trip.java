@@ -12,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "trips", indexes = {
-        @Index(name = "idx_trips_status_time", columnList = "tripStatus,departureTime")
+        @Index(name = "idx_trips_status_time", columnList = "trip_status,departure_time")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Trip {
@@ -26,26 +26,26 @@ public class Trip {
     private User driver;
 
     @NotNull(message = "Точка отправления обязательна")
-    @Column(nullable = false, columnDefinition = "geometry(Point,4326)")
+    @Column(name = "departure_location", nullable = false, columnDefinition = "geometry(Point,4326)")
     private Point departureLocation;
 
     @NotNull(message = "Время отправления обязательно")
-    @Column(nullable = false)
+    @Column(name = "departure_time", nullable = false)
     private LocalDateTime departureTime;
 
     @NotNull(message = "Количество мест обязательно")
     @Min(value = 1, message = "totalSeats должно быть больше 0")
-    @Column(nullable = false)
+    @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
 
     @NotNull(message = "Свободные места обязательны")
     @Min(value = 0, message = "availableSeats не может быть отрицательным")
-    @Column(nullable = false)
+    @Column(name = "available_seats", nullable = false)
     private Integer availableSeats;
 
     @NotNull(message = "Статус поездки обязателен")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "trip_status", nullable = false, length = 20)
     private TripStatus tripStatus;
 
     @Builder.Default

@@ -26,10 +26,10 @@ public class TripParticipant {
     private User passenger;
 
     @NotNull(message = "Время присоединения обязательно")
-    @Column(nullable = false)
+    @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
     @NotNull(message = "isCancelled обязателен")
-    @Column(nullable = false)
+    @Column(name = "is_cancelled", nullable = false)
     private Boolean isCancelled;
 }

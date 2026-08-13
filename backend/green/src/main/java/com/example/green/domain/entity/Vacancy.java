@@ -19,19 +19,19 @@ public class Vacancy {
 
     @NotBlank(message = "Название компании обязательно")
     @Size(max = 255, message = "Название компании слишком длинное")
-    @Column(nullable = false, length = 255)
+    @Column(name = "company_name", nullable = false, length = 255)
     private String companyName;
 
     @NotBlank(message = "Название вакансии обязательно")
     @Size(max = 255, message = "Название вакансии слишком длинное")
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
     @NotBlank(message = "Описание обязательно")
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
 
     @NotNull(message = "isPartnerVacancy обязателен")
-    @Column(nullable = false)
+    @Column(name = "is_partner_vacancy", nullable = false)
     private Boolean isPartnerVacancy;
 }
