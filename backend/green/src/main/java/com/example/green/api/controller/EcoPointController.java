@@ -2,10 +2,7 @@ package com.example.green.api.controller;
 
 import com.example.green.api.dto.request.EcoPointContainerRequestDto;
 import com.example.green.api.dto.response.EcoPointContainerResponseDto;
-import com.example.green.api.error.ResourceNotFoundException;
-import com.example.green.api.mapper.EcoPointContainerMapper;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.service.EcoPointContainerService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -20,47 +17,33 @@ import java.util.List;
 @RequiredArgsConstructor
 @Validated
 public class EcoPointController {
-    private final EcoPointContainerRepository ecoPointContainerRepository;
-    private final EcoPointContainerMapper ecoPointContainerMapper;
+    private final EcoPointContainerService ecoPointContainerService;
 
     @GetMapping
     public List<EcoPointContainerResponseDto> findAll() {
-        return ecoPointContainerRepository.findAll().stream()
-                .map(ecoPointContainerMapper::toDto)
-                .toList();
+        return ecoPointContainerService.findAll();
     }
 
     @GetMapping("/{id}")
     public EcoPointContainerResponseDto findById(@PathVariable @Positive Long id) {
-        EcoPointContainer entity = ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
-        return ecoPointContainerMapper.toDto(entity);
+        return ecoPointContainerService.findById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EcoPointContainerResponseDto create(@RequestBody @Valid EcoPointContainerRequestDto request) {
-        EcoPointContainer saved = ecoPointContainerRepository.save(ecoPointContainerMapper.toEntity(request));
-        return ecoPointContainerMapper.toDto(saved);
+        return ecoPointContainerService.create(request);
     }
 
     @PutMapping("/{id}")
     public EcoPointContainerResponseDto update(@PathVariable @Positive Long id,
                                                @RequestBody @Valid EcoPointContainerRequestDto request) {
-        EcoPointContainer entity = ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
-
-        ecoPointContainerMapper.updateEntity(entity, request);
-        EcoPointContainer saved = ecoPointContainerRepository.save(entity);
-        return ecoPointContainerMapper.toDto(saved);
+        return ecoPointContainerService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable @Positive Long id) {
-        if (!ecoPointContainerRepository.existsById(id)) {
-            throw new ResourceNotFoundException("EcoPointContainer not found: id=" + id);
-        }
-        ecoPointContainerRepository.deleteById(id);
+        ecoPointContainerService.delete(id);
     }
 }
