@@ -7,7 +7,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "refresh_tokens", indexes = {
+@Table(name = "authentications", indexes = {
         @Index(name = "idx_refresh_tokens_token", columnList = "token", unique = true),
         @Index(name = "idx_refresh_tokens_user_id", columnList = "user_id")
 })
@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RefreshToken {
+public class Authentication {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
