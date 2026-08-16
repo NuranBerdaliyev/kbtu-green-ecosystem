@@ -25,11 +25,11 @@ public class WasteLog {
     private EcoPointContainer ecoPointContainer;
 
     @NotNull(message = "scannedAt обязателен")
-    @Column(nullable = false)
+    @Column(name = "scanned_at", nullable = false)
     private LocalDateTime scannedAt;
 
     @NotNull(message = "ecoCoinsEarned обязателен")
     @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
-    @Column(nullable = false)
+    @Column(name = "eco_coins_earned", nullable = false)
     private Integer ecoCoinsEarned;
 }

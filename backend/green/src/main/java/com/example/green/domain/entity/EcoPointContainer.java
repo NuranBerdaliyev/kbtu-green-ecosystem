@@ -8,10 +8,9 @@ import org.locationtech.jts.geom.Point;
 
 @Entity
 @Table(name = "eco_point_containers", indexes = {
-        @Index(name = "idx_container_waste_type", columnList = "wasteType")
+        @Index(name = "idx_container_waste_type", columnList = "waste_type")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-
 public class EcoPointContainer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,30 +18,30 @@ public class EcoPointContainer {
 
     @NotBlank(message = "Название контейнера обязательно")
     @Size(max = 255, message = "Название слишком длинное")
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
     @NotNull(message = "Локация обязательна")
-    @Column(nullable = false, columnDefinition = "geometry(Point,4326)")
+    @Column(name = "location", nullable = false, columnDefinition = "geometry(Point,4326)")
     private Point location;
 
     @NotNull(message = "Тип отхода обязателен")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "waste_type", nullable = false, length = 20)
     private WasteType wasteType;
 
     @NotNull(message = "fullnessPercentage обязателен")
     @Min(value = 0, message = "fullnessPercentage не может быть меньше 0")
     @Max(value = 100, message = "fullnessPercentage не может быть больше 100")
-    @Column(nullable = false)
+    @Column(name = "fullness_percentage", nullable = false)
     private Integer fullnessPercentage;
 
     @NotNull(message = "isActive обязателен")
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
     @NotBlank(message = "QR token обязателен")
     @Size(max = 255, message = "QR token слишком длинный")
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(name = "qr_code_token", nullable = false, unique = true, length = 255)
     private String qrCodeToken;
 }
