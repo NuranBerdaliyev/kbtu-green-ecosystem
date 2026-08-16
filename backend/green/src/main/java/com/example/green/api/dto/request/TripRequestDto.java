@@ -26,6 +26,5 @@ public class TripRequestDto {
     @Min(0)
     private Integer availableSeats;
 
-    @NotNull
     private TripStatus tripStatus;
 }

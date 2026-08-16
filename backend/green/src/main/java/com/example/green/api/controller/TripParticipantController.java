@@ -21,29 +21,30 @@ public class TripParticipantController {
 
     @GetMapping
     public List<TripParticipantResponseDto> findAll() {
-        return tripParticipantService.findAll();
+        return tripParticipantService.findAllTripParticipants();
     }
 
     @GetMapping("/{id}")
     public TripParticipantResponseDto findById(@PathVariable @Positive Long id) {
-        return tripParticipantService.findById(id);
+        return tripParticipantService.findTripParticipantById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TripParticipantResponseDto create(@RequestBody @Valid TripParticipantRequestDto request) {
-        return tripParticipantService.create(request);
+        return tripParticipantService.createTripParticipant(request);
     }
 
     @PutMapping("/{id}")
     public TripParticipantResponseDto update(@PathVariable @Positive Long id,
                                              @RequestBody @Valid TripParticipantRequestDto request) {
-        return tripParticipantService.update(id, request);
+        return tripParticipantService.updateTripParticipant(id, request);
     }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable @Positive Long id) {
-        tripParticipantService.delete(id);
+    @PatchMapping("/trips/{tripId}/passengers/{passengerId}/cancel")
+    public TripParticipantResponseDto cancelParticipation(
+            @PathVariable @Positive Long tripId,
+            @PathVariable @Positive Long passengerId
+    ) {
+        return tripParticipantService.cancelParticipation(tripId, passengerId);
     }
 }

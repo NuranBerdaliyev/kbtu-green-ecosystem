@@ -14,15 +14,12 @@ public class TripParticipantMapper {
                 .trip(trip)
                 .passenger(passenger)
                 .joinedAt(dto.getJoinedAt())
-                .isCancelled(dto.getIsCancelled())
+                .isCancelled(false)
                 .build();
     }
 
-    public void updateEntity(TripParticipant entity, TripParticipantRequestDto dto, Trip trip, User passenger) {
-        entity.setTrip(trip);
-        entity.setPassenger(passenger);
+    public void updateEntity(TripParticipant entity, TripParticipantRequestDto dto) {
         entity.setJoinedAt(dto.getJoinedAt());
-        entity.setIsCancelled(dto.getIsCancelled());
     }
 
     public TripParticipantResponseDto toDto(TripParticipant entity) {

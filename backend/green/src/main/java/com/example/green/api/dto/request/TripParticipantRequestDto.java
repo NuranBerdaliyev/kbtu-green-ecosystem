@@ -16,6 +16,5 @@ public class TripParticipantRequestDto {
     @NotNull
     private LocalDateTime joinedAt;
 
-    @NotNull
     private Boolean isCancelled;
 }

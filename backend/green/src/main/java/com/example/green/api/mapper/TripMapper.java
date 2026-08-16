@@ -4,6 +4,7 @@ import com.example.green.api.dto.request.TripRequestDto;
 import com.example.green.api.dto.response.TripResponseDto;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,17 +20,22 @@ public class TripMapper {
                 .departureTime(dto.getDepartureTime())
                 .totalSeats(dto.getTotalSeats())
                 .availableSeats(dto.getAvailableSeats())
-                .tripStatus(dto.getTripStatus())
+                .tripStatus(TripStatus.CREATED)
                 .build();
     }
 
     public void updateEntity(Trip entity, TripRequestDto dto, User driver) {
-        entity.setDriver(driver);
         entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
         entity.setDepartureTime(dto.getDepartureTime());
         entity.setTotalSeats(dto.getTotalSeats());
         entity.setAvailableSeats(dto.getAvailableSeats());
-        entity.setTripStatus(dto.getTripStatus());
+    }
+
+    public void updateEntityWithoutDriverAndStatus(Trip entity, TripRequestDto dto) {
+        entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
+        entity.setDepartureTime(dto.getDepartureTime());
+        entity.setTotalSeats(dto.getTotalSeats());
+        entity.setAvailableSeats(dto.getAvailableSeats());
     }
 
     public TripResponseDto toDto(Trip entity) {

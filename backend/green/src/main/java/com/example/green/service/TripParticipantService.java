@@ -10,6 +10,7 @@ import com.example.green.domain.entity.User;
 import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
 import com.example.green.domain.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,38 +24,62 @@ public class TripParticipantService {
     private final UserRepository userRepository;
     private final TripParticipantMapper tripParticipantMapper;
 
-    public List<TripParticipantResponseDto> findAll() {
+    public List<TripParticipantResponseDto> findAllTripParticipants() {
         return tripParticipantRepository.findAll().stream()
                 .map(tripParticipantMapper::toDto)
                 .toList();
     }
 
-    public TripParticipantResponseDto findById(Long id) {
+    public TripParticipantResponseDto findTripParticipantById(Long id) {
         return tripParticipantMapper.toDto(getTripParticipantOrThrow(id));
     }
 
-    public TripParticipantResponseDto create(TripParticipantRequestDto request) {
+    @Transactional
+    public TripParticipantResponseDto createTripParticipant(TripParticipantRequestDto request) {
         Trip trip = getTripOrThrow(request.getTripId());
         User passenger = getUserOrThrow(request.getPassengerId());
+        if (trip.isTerminal()) {
+            throw new IllegalStateException("Cannot join completed/cancelled trip");
+        }
+
+        if (tripParticipantRepository.existsByTripIdAndPassengerId(trip.getId(), passenger.getId())) {
+            throw new IllegalStateException("Passenger already joined this trip");
+        }
+
+        trip.occupySeat();
         TripParticipant saved = tripParticipantRepository.save(tripParticipantMapper.toEntity(request, trip, passenger));
+        tripRepository.save(trip);
         return tripParticipantMapper.toDto(saved);
     }
 
-    public TripParticipantResponseDto update(Long id, TripParticipantRequestDto request) {
+    @Transactional
+    public TripParticipantResponseDto updateTripParticipant(Long id, TripParticipantRequestDto request) {
         TripParticipant entity = getTripParticipantOrThrow(id);
-        Trip trip = getTripOrThrow(request.getTripId());
-        User passenger = getUserOrThrow(request.getPassengerId());
-        tripParticipantMapper.updateEntity(entity, request, trip, passenger);
+        entity.getTrip().validateMutable();
+        tripParticipantMapper.updateEntity(entity, request);
         TripParticipant saved = tripParticipantRepository.save(entity);
         return tripParticipantMapper.toDto(saved);
     }
-    public void delete(Long id) {
-        if (!tripParticipantRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TripParticipant not found: id=" + id);
-        }
-        tripParticipantRepository.deleteById(id);
-    }
 
+    @Transactional
+    public TripParticipantResponseDto cancelParticipation(Long tripId, Long passengerId) {
+        TripParticipant participant = tripParticipantRepository
+                .findByTripIdAndPassengerId(tripId, passengerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
+
+        Trip trip = participant.getTrip();
+        trip.validateMutable();
+
+        if (Boolean.TRUE.equals(participant.getIsCancelled())) {
+            throw new IllegalStateException("Participation already cancelled");
+        }
+
+        participant.setIsCancelled(true);
+        trip.releaseSeat();
+
+        tripRepository.save(trip);
+        return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
+    }
     private TripParticipant getTripParticipantOrThrow(Long id) {
         return tripParticipantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TripParticipant not found: id=" + id));
