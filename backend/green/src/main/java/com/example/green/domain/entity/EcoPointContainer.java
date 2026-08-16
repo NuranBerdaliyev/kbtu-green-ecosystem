@@ -11,7 +11,6 @@ import org.locationtech.jts.geom.Point;
         @Index(name = "idx_container_waste_type", columnList = "waste_type")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-
 public class EcoPointContainer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
