@@ -19,23 +19,15 @@ public class TripMapper {
                 .departureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()))
                 .departureTime(dto.getDepartureTime())
                 .totalSeats(dto.getTotalSeats())
-                .availableSeats(dto.getAvailableSeats())
+                .availableSeats(dto.getTotalSeats())
                 .tripStatus(TripStatus.CREATED)
                 .build();
-    }
-
-    public void updateEntity(Trip entity, TripRequestDto dto, User driver) {
-        entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
-        entity.setDepartureTime(dto.getDepartureTime());
-        entity.setTotalSeats(dto.getTotalSeats());
-        entity.setAvailableSeats(dto.getAvailableSeats());
     }
 
     public void updateEntityWithoutDriverAndStatus(Trip entity, TripRequestDto dto) {
         entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
         entity.setDepartureTime(dto.getDepartureTime());
         entity.setTotalSeats(dto.getTotalSeats());
-        entity.setAvailableSeats(dto.getAvailableSeats());
     }
 
     public TripResponseDto toDto(Trip entity) {

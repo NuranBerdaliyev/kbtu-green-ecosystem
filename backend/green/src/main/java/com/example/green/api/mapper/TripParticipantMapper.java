@@ -1,25 +1,22 @@
 package com.example.green.api.mapper;
 
-import com.example.green.api.dto.request.TripParticipantRequestDto;
 import com.example.green.api.dto.response.TripParticipantResponseDto;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.TripParticipant;
 import com.example.green.domain.entity.User;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+
 @Component
 public class TripParticipantMapper {
-    public TripParticipant toEntity(TripParticipantRequestDto dto, Trip trip, User passenger) {
+    public TripParticipant toEntity(Trip trip, User passenger) {
         return TripParticipant.builder()
                 .trip(trip)
                 .passenger(passenger)
-                .joinedAt(dto.getJoinedAt())
-                .isCancelled(false)
+                .joinedAt(LocalDateTime.now()) // только сервер
+                .isCancelled(false)            // только сервер
                 .build();
-    }
-
-    public void updateEntity(TripParticipant entity, TripParticipantRequestDto dto) {
-        entity.setJoinedAt(dto.getJoinedAt());
     }
 
     public TripParticipantResponseDto toDto(TripParticipant entity) {
