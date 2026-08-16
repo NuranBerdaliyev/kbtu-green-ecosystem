@@ -7,22 +7,22 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "refresh_tokens", indexes = {
-        @Index(name = "idx_refresh_tokens_token", columnList = "token", unique = true),
-        @Index(name = "idx_refresh_tokens_user_id", columnList = "user_id")
+@Table(name = "authentications", indexes = {
+        @Index(name = "idx_authentications_token", columnList = "token", unique = true),
+        @Index(name = "idx_authentications_user_id", columnList = "user_id")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RefreshToken {
+public class Authentication {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank
-    @Column(nullable = false, unique = true, length = 512)
+    @Column(name = "token", nullable = false, unique = true, length = 512)
     private String token;
 
     @NotNull
@@ -31,14 +31,14 @@ public class RefreshToken {
     private User user;
 
     @NotNull
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
     @NotNull
-    @Column(nullable = false)
+    @Column(name = "revoked", nullable = false)
     private Boolean revoked;
 
     @NotNull
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }
