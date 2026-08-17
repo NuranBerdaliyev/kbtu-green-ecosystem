@@ -1,0 +1,3230 @@
+\n\n--- START OF FILE: ./pom.xml ---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- XML's namespace, schema, version -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>green</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>green</name>
+    <description>green</description>
+    <url/>
+    <licenses>
+        <license/>
+    </licenses>
+    <developers>
+        <developer/>
+    </developers>
+    <scm>
+        <connection/>
+        <developerConnection/>
+        <tag/>
+        <url/>
+    </scm>
+    <properties>
+        <java.version>21</java.version>
+        <jjwt.version>0.12.6</jjwt.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web & Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- JPA & Database -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-spatial</artifactId>
+        </dependency>
+
+        <!-- Database Migration (Flyway) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- JWT Dependencies -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/AuthController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.LoginRequestDto;
+import com.example.green.api.dto.request.RefreshTokenRequestDto;
+import com.example.green.api.dto.request.RegisterRequestDto;
+import com.example.green.api.dto.response.AuthResponseDto;
+import com.example.green.service.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")//endpoint parent to register, login and refresh the access token
+@RequiredArgsConstructor
+public class AuthController {
+    private final AuthService authService; // AuthService is used here for adding new user, recognizing him
+    // and refresh his access token
+
+    @PostMapping("/register")//auth/register
+    @ResponseStatus(HttpStatus.CREATED)//If this method is completed successfully, return 201 HTTP Status to client
+    /*@Valid enables validation annotations in class fields which's object is given here as an argument
+    * @RequestBody converts request body to RegisterRequestDto and initialize request object by this*/
+    public AuthResponseDto register(@Valid @RequestBody RegisterRequestDto request) {
+        return authService.register(request); //using AuthService methods for registering, login, refresh etc.
+    }
+
+    @PostMapping("/login")//auth/login
+    public AuthResponseDto login(@Valid @RequestBody LoginRequestDto request) {
+        return authService.login(request);
+    }
+
+    //This endpoint is called by frontend automatically when access token is expired.
+    @PostMapping("/refresh")//auth/refresh
+    public AuthResponseDto refresh(@Valid @RequestBody RefreshTokenRequestDto request) {
+        return authService.refresh(request);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/EcoPointController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.EcoPointContainerRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.service.EcoPointContainerService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/eco-point-containers")
+@RequiredArgsConstructor
+@Validated
+public class EcoPointController {
+    private final EcoPointContainerService ecoPointContainerService;
+
+    @GetMapping
+    public List<EcoPointContainerResponseDto> findAll() {
+        return ecoPointContainerService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public EcoPointContainerResponseDto findById(@PathVariable @Positive Long id) {
+        return ecoPointContainerService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EcoPointContainerResponseDto create(@RequestBody @Valid EcoPointContainerRequestDto request) {
+        return ecoPointContainerService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public EcoPointContainerResponseDto update(@PathVariable @Positive Long id,
+                                               @RequestBody @Valid EcoPointContainerRequestDto request) {
+        return ecoPointContainerService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        ecoPointContainerService.delete(id);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/JobApplicationController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.service.JobApplicationService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/job-applications")
+@RequiredArgsConstructor
+@Validated
+public class JobApplicationController {
+    private final JobApplicationService jobApplicationService;
+
+    @GetMapping
+    public List<JobApplicationResponseDto> findAll() {
+        return jobApplicationService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public JobApplicationResponseDto findById(@PathVariable @Positive Long id) {
+        return jobApplicationService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public JobApplicationResponseDto create(@RequestBody @Valid JobApplicationRequestDto request) {
+        return jobApplicationService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public JobApplicationResponseDto update(@PathVariable @Positive Long id,
+                                            @RequestBody @Valid JobApplicationRequestDto request) {
+        return jobApplicationService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        jobApplicationService.delete(id);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/ProfileController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.ProfileRequestDto;
+import com.example.green.api.dto.response.ProfileResponseDto;
+import com.example.green.service.ProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/profiles")
+@RequiredArgsConstructor
+public class ProfileController {
+
+    private final ProfileService profileService;
+
+    @GetMapping("/{userId}")
+    public ProfileResponseDto getByUserId(@PathVariable Long userId) {
+        return profileService.getByUserId(userId);
+    }
+
+    @PutMapping("/{userId}")
+    public ProfileResponseDto upsertByUserId(@PathVariable Long userId,
+                                             @Valid @RequestBody ProfileRequestDto request) {
+        return profileService.upsertByUserId(userId, request);
+    }
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/TripController.java ---
+package com.example.green.api.controller;
+import com.example.green.api.dto.request.TripRequestDto;
+import com.example.green.api.dto.request.TripSearchRequestDto;
+import com.example.green.api.dto.response.TripResponseDto;
+import com.example.green.service.TripService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+
+import java.util.List;
+@RestController
+@RequestMapping("/api/carpool/trips")
+@RequiredArgsConstructor
+@Validated
+public class TripController {
+    private final TripService tripService;
+
+    // POST /api/carpool/trips — create
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public TripResponseDto create(@RequestBody @Valid TripRequestDto request) {
+        return tripService.createTrip(request);
+    }
+
+    // GET /api/carpool/trips/{tripId} — details
+    @GetMapping("/{tripId}")
+    public TripResponseDto details(@PathVariable @Positive Long tripId) {
+        return tripService.findTripById(tripId);
+    }
+
+    // GET /api/carpool/trips/search — search (с пагинацией)
+    @GetMapping("/search")
+    public Page<TripResponseDto> search(@Valid @ModelAttribute TripSearchRequestDto request) {
+        return tripService.search(request);
+    }
+
+    // POST /api/carpool/trips/{tripId}/complete — complete
+    @PostMapping("/{tripId}/complete")
+    public TripResponseDto complete(@PathVariable @Positive Long tripId) {
+        return tripService.completeStatus(tripId);
+    }
+
+    // POST /api/carpool/trips/{tripId}/cancel — cancel trip
+    @PostMapping("/{tripId}/cancel")
+    public TripResponseDto cancel(@PathVariable @Positive Long tripId) {
+        return tripService.cancelStatus(tripId);
+    }
+
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/TripParticipantController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.response.TripParticipantResponseDto;
+import com.example.green.service.TripParticipantService;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/carpool")
+@RequiredArgsConstructor
+@Validated
+public class TripParticipantController {
+    private final TripParticipantService tripParticipantService;
+    @PostMapping("trips/{tripId}/participants/join")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TripParticipantResponseDto join(@PathVariable @Positive Long tripId) {
+        return tripParticipantService.joinTrip(tripId);
+    }
+
+    @DeleteMapping("trips/{tripId}/participants/leave")
+    public TripParticipantResponseDto leave(@PathVariable @Positive Long tripId) {
+        return tripParticipantService.leaveTrip(tripId);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/UserController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.UserRequestDto;
+import com.example.green.api.dto.response.UserResponseDto;
+import com.example.green.service.UserService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+@Validated
+public class UserController {
+    private final UserService userService;
+
+    @GetMapping
+    public List<UserResponseDto> findAll() {
+        return userService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public UserResponseDto findById(@PathVariable @Positive Long id) {
+        return userService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponseDto create(@RequestBody @Valid UserRequestDto request) {
+        return userService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public UserResponseDto update(@PathVariable @Positive Long id,
+                                  @RequestBody @Valid UserRequestDto request) {
+        return userService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        userService.delete(id);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/VacancyController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.service.VacancyService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/vacancies")
+@RequiredArgsConstructor
+@Validated
+public class VacancyController {
+    private final VacancyService vacancyService;
+
+    @GetMapping
+    public List<VacancyResponseDto> findAll() {
+        return vacancyService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public VacancyResponseDto findById(@PathVariable @Positive Long id) {
+        return vacancyService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public VacancyResponseDto create(@RequestBody @Valid VacancyRequestDto request) {
+        return vacancyService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public VacancyResponseDto update(@PathVariable @Positive Long id,
+                                     @RequestBody @Valid VacancyRequestDto request) {
+        return vacancyService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        vacancyService.delete(id);
+    }
+}
+
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/controller/WasteLogController.java ---
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.WasteLogRequestDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.service.WasteLogService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/waste-logs")
+@RequiredArgsConstructor
+@Validated
+public class WasteLogController {
+    private final WasteLogService wasteLogService;
+
+    @GetMapping
+    public List<WasteLogResponseDto> findAll() {
+        return wasteLogService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public WasteLogResponseDto findById(@PathVariable @Positive Long id) {
+        return wasteLogService.findById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public WasteLogResponseDto create(@RequestBody @Valid WasteLogRequestDto request) {
+        return wasteLogService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public WasteLogResponseDto update(@PathVariable @Positive Long id,
+                                      @RequestBody @Valid WasteLogRequestDto request) {
+        return wasteLogService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        wasteLogService.delete(id);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/EcoPointContainerRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import com.example.green.domain.enums.WasteType;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class EcoPointContainerRequestDto {
+    @NotBlank
+    @Size(max = 255)
+    private String title;
+
+    @NotNull
+    private String locationWkt; // POINT(lon lat)
+
+    @NotNull
+    private WasteType wasteType;
+
+    @NotNull
+    @Min(0) @Max(100)
+    private Integer fullnessPercentage;
+
+    @NotNull
+    private Boolean isActive;
+
+    @NotBlank
+    @Size(max = 255)
+    private String qrCodeToken;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/JobApplicationRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import com.example.green.domain.enums.JobStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class JobApplicationRequestDto {
+    @NotNull
+    private Long vacancyId;
+
+    @NotNull
+    private Long studentId;
+
+    @NotNull
+    private LocalDateTime appliedAt;
+
+    @NotBlank
+    @Size(min = 10, max = 5000)
+    private String coverLetter;
+
+    @NotNull
+    private JobStatus jobStatus;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/LoginRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LoginRequestDto {
+    @NotBlank
+    @Email
+    @Size(max = 255)
+    private String email;
+
+    @NotBlank
+    @Size(min = 8, max = 72)
+    private String password;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/ProfileRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProfileRequestDto {
+    @Size(max = 20)
+    private String phone;
+
+    @Size(max = 255)
+    private String avatarUrl;
+
+    @Size(max = 500)
+    private String bio;
+
+    private LocalDate birthDate;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/RefreshTokenRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class RefreshTokenRequestDto {
+
+    @NotBlank
+    private String refreshToken;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/RegisterRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import com.example.green.domain.enums.Role;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class RegisterRequestDto {
+    @NotBlank
+    @Email
+    @Size(max = 255)
+    private String email;
+
+    @NotBlank
+    @Size(min = 8, max = 72)
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+            message = "Пароль должен содержать минимум 1 строчную, 1 заглавную букву и 1 цифру"
+    )
+    private String password;
+
+    @NotBlank
+    @Size(max = 255)
+    private String fullName;
+
+    @NotNull
+    private Role role;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/TripRequestDto.java ---
+package com.example.green.api.dto.request;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TripRequestDto {
+
+    @NotNull
+    private String departureLocationWkt;
+
+    @NotNull
+    private LocalDateTime departureTime;
+
+    @NotNull
+    @Min(1)
+    private Integer totalSeats;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/TripSearchRequestDto.java ---
+package com.example.green.api.dto.request;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TripSearchRequestDto {
+    private LocalDateTime fromTime;
+    private LocalDateTime toTime;
+
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
+    private Double originLat;
+
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
+    private Double originLng;
+
+    @DecimalMin("0.0")
+    private Double radiusKm;
+
+    @Min(1)
+    private Integer minSeats;
+
+    @Min(0)
+    @Builder.Default
+    private Integer page = 0;
+
+    @Min(1)
+    @Builder.Default
+    private Integer size = 20;
+
+    @Builder.Default
+    private String sort = "departureTime,asc";
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/UserRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import com.example.green.domain.enums.Role;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class UserRequestDto {
+    @NotBlank
+    @Email
+    @Size(max = 255)
+    private String email;
+
+    @NotBlank
+    @Size(max = 255)
+    private String fullName;
+
+    @NotNull
+    private Role role;
+
+    @NotNull
+    @Min(0)
+    private Long ecoCoinsBalance;
+
+    @NotNull
+    @Min(0)
+    @Max(100)
+    private Integer esgRating;
+
+    @NotNull
+    @DecimalMin(value = "0.0", inclusive = true)
+    @Digits(integer = 12, fraction = 3)
+    private BigDecimal totalCo2Saved;
+
+    @NotNull
+    private LocalDateTime createdAt;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/VacancyRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class VacancyRequestDto {
+    @NotNull
+    private Long hrManagerId;
+
+    @NotBlank
+    @Size(max = 255)
+    private String companyName;
+
+    @NotBlank
+    @Size(max = 255)
+    private String title;
+
+    @NotBlank
+    private String description;
+
+    @NotNull
+    private Boolean isPartnerVacancy;
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/request/WasteLogRequestDto.java ---
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class WasteLogRequestDto {
+    @NotNull
+    private Long userId;
+
+    @NotNull
+    private Long ecoPointContainerId;
+
+    @NotNull
+    private LocalDateTime scannedAt;
+
+    @NotNull
+    @Min(0)
+    private Integer ecoCoinsEarned;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/AuthResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class AuthResponseDto {
+
+    private String tokenType;      // обычно "Bearer"
+    private String accessToken;
+    private long accessExpiresIn;  // секунды
+    private String refreshToken;
+    private long refreshExpiresIn; // секунды
+    private Long userId;
+    private String email;
+    private String role;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/EcoPointContainerResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.WasteType;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class EcoPointContainerResponseDto {
+    private Long id;
+    private String title;
+    private String locationWkt;
+    private WasteType wasteType;
+    private Integer fullnessPercentage;
+    private Boolean isActive;
+    private String qrCodeToken;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/JobApplicationResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.JobStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class JobApplicationResponseDto {
+    private Long id;
+    private Long vacancyId;
+    private Long studentId;
+    private LocalDateTime appliedAt;
+    private String coverLetter;
+    private JobStatus jobStatus;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/ProfileResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProfileResponseDto {
+    private Long id;
+    private Long userId;
+    private String phone;
+    private String avatarUrl;
+    private String bio;
+    private LocalDate birthDate;
+    private LocalDateTime updatedAt;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/TripParticipantResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TripParticipantResponseDto {
+    private Long id;
+    private Long tripId;
+    private Long passengerId;
+    private LocalDateTime joinedAt;
+    private Boolean isCancelled;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/TripResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.TripStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TripResponseDto {
+    private Long id;
+    private Long driverId;
+    private String departureLocationWkt;
+    private LocalDateTime departureTime;
+    private Integer totalSeats;
+    private Integer availableSeats;
+    private TripStatus tripStatus;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/UserResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.Role;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class UserResponseDto {
+    private Long id;
+    private String email;
+    private String fullName;
+    private Role role;
+    private Long ecoCoinsBalance;
+    private Integer esgRating;
+    private BigDecimal totalCo2Saved;
+    private LocalDateTime createdAt;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/VacancyResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class VacancyResponseDto {
+    private Long id;
+    private Long hrManagerId;
+    private String companyName;
+    private String title;
+    private String description;
+    private Boolean isPartnerVacancy;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/dto/response/WasteLogResponseDto.java ---
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class WasteLogResponseDto {
+    private Long id;
+    private Long userId;
+    private Long ecoPointContainerId;
+    private LocalDateTime scannedAt;
+    private Integer ecoCoinsEarned;
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/api/error/ApiErrorResponse.java ---
+package com.example.green.api.error;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+public record ApiErrorResponse(
+        LocalDateTime timestamp,
+        int status,
+        String error,
+        String message,
+        String path,
+        Map<String, String> validationErrors
+) {}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/error/GlobalExceptionHandler.java ---
+package com.example.green.api.error;
+
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        FieldError::getDefaultMessage,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new
+                ));
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Ошибка валидации тела запроса",
+                request.getRequestURI(),
+                errors
+        );
+    }
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiErrorResponse> handleBindException(
+            BindException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        FieldError::getDefaultMessage,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new
+                ));
+
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "Ошибка валидации параметров",
+                request.getRequestURI(),
+                errors
+        );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> errors = ex.getConstraintViolations()
+                .stream()
+                .collect(Collectors.toMap(
+                        v -> v.getPropertyPath().toString(),
+                        v -> v.getMessage(),
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new
+            ));
+
+        return build(
+            HttpStatus.BAD_REQUEST,
+                "Ошибка валидации path/query параметров",
+            request.getRequestURI(),
+    errors
+        );
+    }
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        String message = "Некорректный тип параметра: " + ex.getName();
+        return build(HttpStatus.BAD_REQUEST, message, request.getRequestURI(), Map.of());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request
+    ) {
+        String message = "Некорректный JSON в теле запроса";
+
+        Throwable cause = ex.getCause();
+        if (cause instanceof InvalidFormatException ife
+                && ife.getTargetType() != null
+                && ife.getTargetType().isEnum()) {
+            String allowed = Arrays.stream(ife.getTargetType().getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            message = "Некорректное значение enum. Разрешены: [" + allowed + "]";
+        }
+
+        return build(HttpStatus.BAD_REQUEST, message, request.getRequestURI(), Map.of());
+    }
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex,
+            HttpServletRequest request
+    ) {
+        String sqlState = extractSqlState(ex);
+        String message;
+
+        if ("23505".equals(sqlState)) {
+            message = "Нарушено ограничение уникальности (duplicate key)";
+        } else if ("23514".equals(sqlState)) {
+            message = "Нарушено CHECK-ограничение в БД";
+        } else if ("23503".equals(sqlState)) {
+            message = "Нарушена ссылочная целостность (FK)";
+        } else if ("23502".equals(sqlState)) {
+            message = "Нарушено ограничение NOT NULL";
+        } else {
+            message = "Нарушение целостности данных в БД";
+        }
+
+        return build(HttpStatus.CONFLICT, message, request.getRequestURI(), Map.of());
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), Map.of());
+    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleGeneric(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Внутренняя ошибка сервера",
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), Map.of());
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(
+            BadCredentialsException ex,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request.getRequestURI(), Map.of());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), Map.of());
+    }
+
+    private ResponseEntity<ApiErrorResponse> build(
+            HttpStatus status,
+            String message,
+            String path,
+            Map<String, String> validationErrors
+    ) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path,
+                validationErrors
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private String extractSqlState(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof SQLException sqlEx && sqlEx.getSQLState() != null) {
+                return sqlEx.getSQLState();
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/error/ResourceNotFoundException.java ---
+package com.example.green.api.error;
+
+public class ResourceNotFoundException extends RuntimeException{
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/AuthMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.response.AuthResponseDto;
+import com.example.green.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+@Component
+public class AuthMapper {
+    public AuthResponseDto toDto(
+            User user,
+            String accessToken,
+            String refreshToken,
+            long accessTtlSeconds,
+            long refreshTtlSeconds
+    ) {
+        return AuthResponseDto.builder()
+                .tokenType("Bearer")
+                .accessToken(accessToken)
+                .accessExpiresIn(accessTtlSeconds)
+                .refreshToken(refreshToken)
+                .refreshExpiresIn(refreshTtlSeconds)
+                .userId(user.getId())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+    }
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/EcoPointContainerMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.EcoPointContainerRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.domain.entity.EcoPointContainer;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class EcoPointContainerMapper {
+    private final GeometryMapper geometryMapper;
+
+    public EcoPointContainer toEntity(EcoPointContainerRequestDto dto) {
+        return EcoPointContainer.builder()
+                .title(dto.getTitle())
+                .location(geometryMapper.fromWkt(dto.getLocationWkt()))
+                .wasteType(dto.getWasteType())
+                .fullnessPercentage(dto.getFullnessPercentage())
+                .isActive(dto.getIsActive())
+                .qrCodeToken(dto.getQrCodeToken())
+                .build();
+    }
+
+    public void updateEntity(EcoPointContainer entity, EcoPointContainerRequestDto dto) {
+        entity.setTitle(dto.getTitle());
+        entity.setLocation(geometryMapper.fromWkt(dto.getLocationWkt()));
+        entity.setWasteType(dto.getWasteType());
+        entity.setFullnessPercentage(dto.getFullnessPercentage());
+        entity.setIsActive(dto.getIsActive());
+        entity.setQrCodeToken(dto.getQrCodeToken());
+    }
+
+    public EcoPointContainerResponseDto toDto(EcoPointContainer entity) {
+        return EcoPointContainerResponseDto.builder()
+                .id(entity.getId())
+                .title(entity.getTitle())
+                .locationWkt(geometryMapper.toWkt(entity.getLocation()))
+                .wasteType(entity.getWasteType())
+                .fullnessPercentage(entity.getFullnessPercentage())
+                .isActive(entity.getIsActive())
+                .qrCodeToken(entity.getQrCodeToken())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/GeometryMapper.java ---
+package com.example.green.api.mapper;
+
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.WKTReader;
+import org.locationtech.jts.io.WKTWriter;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GeometryMapper {
+    private final WKTWriter wktWriter = new WKTWriter();
+
+    public Point fromWkt(String wkt) {
+        try {
+            Geometry geometry = new WKTReader().read(wkt);
+            if (!(geometry instanceof Point point)) {
+                throw new IllegalArgumentException("WKT должен быть POINT");
+            }
+            point.setSRID(4326);
+            return point;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Неверный WKT: " + wkt, e);
+        }
+    }
+
+    public String toWkt(Point point) {
+        if (point == null) {
+            return null;
+        }
+        return wktWriter.write(point);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/JobApplicationMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.domain.entity.JobApplication;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import org.springframework.stereotype.Component;
+
+@Component
+public class JobApplicationMapper {
+    public JobApplication toEntity(JobApplicationRequestDto dto, Vacancy vacancy, User student) {
+        return JobApplication.builder()
+                .vacancy(vacancy)
+                .student(student)
+                .appliedAt(dto.getAppliedAt())
+                .coverLetter(dto.getCoverLetter())
+                .jobStatus(dto.getJobStatus())
+                .build();
+    }
+
+    public void updateEntity(JobApplication entity, JobApplicationRequestDto dto, Vacancy vacancy, User student) {
+        entity.setVacancy(vacancy);
+        entity.setStudent(student);
+        entity.setAppliedAt(dto.getAppliedAt());
+        entity.setCoverLetter(dto.getCoverLetter());
+        entity.setJobStatus(dto.getJobStatus());
+    }
+
+    public JobApplicationResponseDto toDto(JobApplication entity) {
+        return JobApplicationResponseDto.builder()
+                .id(entity.getId())
+                .vacancyId(entity.getVacancy().getId())
+                .studentId(entity.getStudent().getId())
+                .appliedAt(entity.getAppliedAt())
+                .coverLetter(entity.getCoverLetter())
+                .jobStatus(entity.getJobStatus())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/ProfileMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.ProfileRequestDto;
+import com.example.green.api.dto.response.ProfileResponseDto;
+import com.example.green.domain.entity.Profile;
+import com.example.green.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+
+@Component
+public class ProfileMapper {
+    public ProfileResponseDto toDto(Profile profile) {
+        return ProfileResponseDto.builder()
+                .id(profile.getId())
+                .userId(profile.getUser().getId())
+                .phone(profile.getPhone())
+                .avatarUrl(profile.getAvatarUrl())
+                .bio(profile.getBio())
+                .birthDate(profile.getBirthDate())
+                .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
+
+    public Profile toEntity(ProfileRequestDto request, User user) {
+        return Profile.builder()
+                .user(user)
+                .phone(request.getPhone())
+                .avatarUrl(request.getAvatarUrl())
+                .bio(request.getBio())
+                .birthDate(request.getBirthDate())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    public void updateEntity(Profile profile, ProfileRequestDto request) {
+        profile.setPhone(request.getPhone());
+        profile.setAvatarUrl(request.getAvatarUrl());
+        profile.setBio(request.getBio());
+        profile.setBirthDate(request.getBirthDate());
+        profile.setUpdatedAt(LocalDateTime.now());
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/TripMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.TripRequestDto;
+import com.example.green.api.dto.response.TripResponseDto;
+import com.example.green.domain.entity.Trip;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class TripMapper {
+    private final GeometryMapper geometryMapper;
+
+    public Trip toEntity(TripRequestDto dto, User driver) {
+        return Trip.builder()
+                .driver(driver)
+                .departureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()))
+                .departureTime(dto.getDepartureTime())
+                .totalSeats(dto.getTotalSeats())
+                .availableSeats(dto.getTotalSeats())
+                .tripStatus(TripStatus.CREATED)
+                .build();
+    }
+
+    public void updateEntityWithoutDriverAndStatus(Trip entity, TripRequestDto dto) {
+        entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
+        entity.setDepartureTime(dto.getDepartureTime());
+        entity.setTotalSeats(dto.getTotalSeats());
+    }
+
+    public TripResponseDto toDto(Trip entity) {
+        return TripResponseDto.builder()
+                .id(entity.getId())
+                .driverId(entity.getDriver().getId())
+                .departureLocationWkt(geometryMapper.toWkt(entity.getDepartureLocation()))
+                .departureTime(entity.getDepartureTime())
+                .totalSeats(entity.getTotalSeats())
+                .availableSeats(entity.getAvailableSeats())
+                .tripStatus(entity.getTripStatus())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/TripParticipantMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.response.TripParticipantResponseDto;
+import com.example.green.domain.entity.Trip;
+import com.example.green.domain.entity.TripParticipant;
+import com.example.green.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+
+@Component
+public class TripParticipantMapper {
+    public TripParticipant toEntity(Trip trip, User passenger) {
+        return TripParticipant.builder()
+                .trip(trip)
+                .passenger(passenger)
+                .joinedAt(LocalDateTime.now()) // только сервер
+                .isCancelled(false)            // только сервер
+                .build();
+    }
+
+    public TripParticipantResponseDto toDto(TripParticipant entity) {
+        return TripParticipantResponseDto.builder()
+                .id(entity.getId())
+                .tripId(entity.getTrip().getId())
+                .passengerId(entity.getPassenger().getId())
+                .joinedAt(entity.getJoinedAt())
+                .isCancelled(entity.getIsCancelled())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/UserMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.UserRequestDto;
+import com.example.green.api.dto.response.UserResponseDto;
+import com.example.green.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+@Component
+public class UserMapper {
+    public User toEntity(UserRequestDto dto) {
+        return User.builder()
+                .email(dto.getEmail())
+                .fullName(dto.getFullName())
+                .role(dto.getRole())
+                .ecoCoinsBalance(dto.getEcoCoinsBalance())
+                .esgRating(dto.getEsgRating())
+                .totalCo2Saved(dto.getTotalCo2Saved())
+                .createdAt(dto.getCreatedAt())
+                .build();
+    }
+
+    public void updateEntity(User entity, UserRequestDto dto) {
+        entity.setEmail(dto.getEmail());
+        entity.setFullName(dto.getFullName());
+        entity.setRole(dto.getRole());
+        entity.setEcoCoinsBalance(dto.getEcoCoinsBalance());
+        entity.setEsgRating(dto.getEsgRating());
+        entity.setTotalCo2Saved(dto.getTotalCo2Saved());
+        entity.setCreatedAt(dto.getCreatedAt());
+    }
+
+    public UserResponseDto toDto(User entity) {
+        return UserResponseDto.builder()
+                .id(entity.getId())
+                .email(entity.getEmail())
+                .fullName(entity.getFullName())
+                .role(entity.getRole())
+                .ecoCoinsBalance(entity.getEcoCoinsBalance())
+                .esgRating(entity.getEsgRating())
+                .totalCo2Saved(entity.getTotalCo2Saved())
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/VacancyMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import org.springframework.stereotype.Component;
+
+@Component
+public class VacancyMapper {
+    public Vacancy toEntity(VacancyRequestDto dto, User hrManager) {
+        return Vacancy.builder()
+                .hrManager(hrManager)
+                .companyName(dto.getCompanyName())
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .isPartnerVacancy(dto.getIsPartnerVacancy())
+                .build();
+    }
+
+    public void updateEntity(Vacancy entity, VacancyRequestDto dto, User hrManager) {
+        entity.setHrManager(hrManager);
+        entity.setCompanyName(dto.getCompanyName());
+        entity.setTitle(dto.getTitle());
+        entity.setDescription(dto.getDescription());
+        entity.setIsPartnerVacancy(dto.getIsPartnerVacancy());
+    }
+
+    public VacancyResponseDto toDto(Vacancy entity) {
+        return VacancyResponseDto.builder()
+                .id(entity.getId())
+                .hrManagerId(entity.getHrManager().getId())
+                .companyName(entity.getCompanyName())
+                .title(entity.getTitle())
+                .description(entity.getDescription())
+                .isPartnerVacancy(entity.getIsPartnerVacancy())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/api/mapper/WasteLogMapper.java ---
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.WasteLogRequestDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.WasteLog;
+import org.springframework.stereotype.Component;
+
+@Component
+public class WasteLogMapper {
+    public WasteLog toEntity(WasteLogRequestDto dto, User user, EcoPointContainer ecoPointContainer) {
+        return WasteLog.builder()
+                .user(user)
+                .ecoPointContainer(ecoPointContainer)
+                .scannedAt(dto.getScannedAt())
+                .ecoCoinsEarned(dto.getEcoCoinsEarned())
+                .build();
+    }
+
+    public void updateEntity(WasteLog entity, WasteLogRequestDto dto, User user, EcoPointContainer ecoPointContainer) {
+        entity.setUser(user);
+        entity.setEcoPointContainer(ecoPointContainer);
+        entity.setScannedAt(dto.getScannedAt());
+        entity.setEcoCoinsEarned(dto.getEcoCoinsEarned());
+    }
+
+    public WasteLogResponseDto toDto(WasteLog entity) {
+        return WasteLogResponseDto.builder()
+                .id(entity.getId())
+                .userId(entity.getUser().getId())
+                .ecoPointContainerId(entity.getEcoPointContainer().getId())
+                .scannedAt(entity.getScannedAt())
+                .ecoCoinsEarned(entity.getEcoCoinsEarned())
+                .build();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/config/AuthProperties.java ---
+package com.example.green.config;
+
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+@Getter
+@Setter
+@ConfigurationProperties(prefix = "app.auth")/*
+ talking to Spring where to take the values
+ for configuration jwt parameters
+ */
+@Validated
+public class AuthProperties {
+    @NotBlank(message = "app.auth.jwt-secret must not be blank")
+    @Size(min = 32, message = "app.auth.jwt-secret must be at least 32 chars")
+    private String jwtSecret; //jwt key for generation access and refresh tokens
+
+    @Min(value = 1, message = "app.auth.access-ttl-seconds must be > 0")
+    private long accessTtlSeconds; //access token's existence time for getting access to defended endpoints
+
+    @Min(value = 1, message = "app.auth.refresh-ttl-seconds must be > 0")
+    private long refreshTtlSeconds; //refresh token's existence time for updating access token (for security)
+    //If malicious catch access token, token can help him only for accessTtlSeconds time
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/config/SecurityConfig.java ---
+package com.example.green.config;
+import com.example.green.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/Authentication.java ---
+package com.example.green.domain.entity;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "authentications", indexes = {
+        @Index(name = "idx_authentications_token", columnList = "token", unique = true),
+        @Index(name = "idx_authentications_user_id", columnList = "user_id")
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Authentication {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(name = "token", nullable = false, unique = true, length = 512)
+    private String token;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @NotNull
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
+    @NotNull
+    @Column(name = "revoked", nullable = false)
+    private Boolean revoked;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/EcoPointContainer.java ---
+package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.WasteType;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+import org.locationtech.jts.geom.Point;
+
+@Entity
+@Table(name = "eco_point_containers", indexes = {
+        @Index(name = "idx_container_waste_type", columnList = "waste_type")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class EcoPointContainer {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Название контейнера обязательно")
+    @Size(max = 255, message = "Название слишком длинное")
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @NotNull(message = "Локация обязательна")
+    @Column(name = "location", nullable = false, columnDefinition = "geometry(Point,4326)")
+    private Point location;
+
+    @NotNull(message = "Тип отхода обязателен")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "waste_type", nullable = false, length = 20)
+    private WasteType wasteType;
+
+    @NotNull(message = "fullnessPercentage обязателен")
+    @Min(value = 0, message = "fullnessPercentage не может быть меньше 0")
+    @Max(value = 100, message = "fullnessPercentage не может быть больше 100")
+    @Column(name = "fullness_percentage", nullable = false)
+    private Integer fullnessPercentage;
+
+    @NotNull(message = "isActive обязателен")
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
+    @NotBlank(message = "QR token обязателен")
+    @Size(max = 255, message = "QR token слишком длинный")
+    @Column(name = "qr_code_token", nullable = false, unique = true, length = 255)
+    private String qrCodeToken;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/JobApplication.java ---
+package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.JobStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+import java.time.LocalDateTime;
+@Entity
+@Table(name = "job_applications",
+        indexes = {
+        @Index(name = "idx_job_app_status", columnList = "job_status")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_job_application_vacancy_student", columnNames = {"vacancy_id", "student_id"})
+        }
+)
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class JobApplication {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Vacancy обязателен")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "vacancy_id", nullable = false)
+    private Vacancy vacancy;
+
+    @NotNull(message = "Student обязателен")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "student_id", nullable = false)
+    private User student;
+
+    @NotNull(message = "Дата подачи обязательна")
+    @Column(name = "applied_at", nullable = false)
+    private LocalDateTime appliedAt;
+
+    @NotBlank(message = "Cover letter обязателен")
+    @Size(min = 10, max = 5000, message = "Cover letter должен быть от 10 до 5000 символов")
+    @Column(name = "cover_letter", nullable = false, columnDefinition = "text")
+    private String coverLetter;
+
+    @NotNull(message = "Статус заявки обязателен")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_status", nullable = false, length = 20)
+    private JobStatus jobStatus;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/Profile.java ---
+package com.example.green.domain.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "profiles", indexes = {
+        @Index(name = "idx_profiles_user_id", columnList = "user_id", unique = true)
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Profile {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
+
+    @Size(max = 20)
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Size(max = 255)
+    @Column(name = "avatar_url", length = 255)
+    private String avatarUrl;
+
+    @Size(max = 500)
+    @Column(name = "bio", length = 500)
+    private String bio;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/Trip.java ---
+package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.TripStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+import org.locationtech.jts.geom.Point;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "trips", indexes = {
+        @Index(name = "idx_trips_status_time", columnList = "trip_status,departure_time")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class Trip {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Driver cannot be blank")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "driver_id", nullable = false)
+    private User driver;
+
+    @NotNull(message = "Departure location cannot be blank")
+    @Column(name = "departure_location", nullable = false, columnDefinition = "geometry(Point,4326)")
+    private Point departureLocation;
+
+    @NotNull(message = "Departure time cannot be blank")
+    @Column(name = "departure_time", nullable = false)
+    private LocalDateTime departureTime;
+
+    @NotNull(message = "Departure location cannot be blank")
+    @Min(value = 1, message = "totalSeats должно быть больше 0")
+    @Column(name = "total_seats", nullable = false)
+    private Integer totalSeats;
+
+    @NotNull(message = "Available seats cannot be blank")
+    @Min(value = 0, message = "availableSeats не может быть отрицательным")
+    @Column(name = "available_seats", nullable = false)
+    private Integer availableSeats;
+
+    @NotNull(message = "Trip status cannot be blank")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trip_status", nullable = false, length = 20)
+    private TripStatus tripStatus;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TripParticipant> tripParticipants = new ArrayList<>();
+
+    public boolean isTerminal() {
+        return tripStatus == TripStatus.COMPLETED || tripStatus == TripStatus.CANCELLED;
+    }
+
+    public boolean isPublished() {
+        return tripStatus == TripStatus.ACTIVE || isTerminal();
+    }
+
+    public void validateMutable() {
+        if (isTerminal()) {
+            throw new IllegalStateException("Trip is immutable in status: " + tripStatus);
+        }
+    }
+
+    public void changeStatus(TripStatus next) {
+        if (tripStatus == null || next == null) {
+            throw new IllegalArgumentException("Trip status cannot be null");
+        }
+
+        boolean allowed = switch (tripStatus) {
+            case CREATED -> next == TripStatus.ACTIVE || next == TripStatus.CANCELLED;
+            case ACTIVE -> next == TripStatus.COMPLETED || next == TripStatus.CANCELLED;
+            case COMPLETED, CANCELLED -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException("Invalid trip status transition: " + tripStatus + " -> " + next);
+        }
+
+        this.tripStatus = next;
+    }
+
+    public void occupySeat() {
+        validateMutable();
+        if (availableSeats == null || availableSeats <= 0) {
+            throw new IllegalStateException("No available seats");
+        }
+        this.availableSeats -= 1;
+    }
+
+    public void releaseSeat() {
+        validateMutable();
+        if (availableSeats == null || totalSeats == null || availableSeats >= totalSeats) {
+            throw new IllegalStateException("Cannot release seat beyond totalSeats");
+        }
+        this.availableSeats += 1;
+    }
+    @AssertTrue(message = "availableSeats cannot be more than totalSeats")
+    public boolean isSeatsValid() {
+        if (availableSeats == null || totalSeats == null) return true;
+        return availableSeats <= totalSeats;
+    }
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/TripParticipant.java ---
+package com.example.green.domain.entity;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "trip_participants", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_trip_passenger", columnNames = {"trip_id", "passenger_id"})
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class TripParticipant {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Trip cannot be blank")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "trip_id", nullable = false)
+    private Trip trip;
+
+    @NotNull(message = "Passenger cannot be blank")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "passenger_id", nullable = false)
+    private User passenger;
+
+    @NotNull(message = "joinedAt cannot be blank")
+    @Column(name = "joined_at", nullable = false)
+    private LocalDateTime joinedAt;
+
+    @NotNull(message = "isCancelled cannot be blank")
+    @Column(name = "is_cancelled", nullable = false)
+    private Boolean isCancelled;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/User.java ---
+package com.example.green.domain.entity;
+import com.example.green.domain.enums.Role;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_email", columnList = "email", unique = true)
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Email(message = "Некорректный email")
+    @NotBlank(message = "Email обязателен")
+    @Size(max = 255, message = "Email слишком длинный")
+    @Column(name = "email", nullable = false, unique = true, length = 255)
+    private String email;
+
+    @NotBlank(message = "ФИО обязательно")
+    @Size(max = 255, message = "ФИО слишком длинное")
+    @Column(name = "full_name", nullable = false, length = 255)
+    private String fullName;
+
+    @NotNull(message = "Роль обязательна")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    private Role role;
+
+    @NotBlank(message = "Пароль обязателен")
+    @Size(min = 60, max = 72, message = "Некорректная длина хеша пароля")
+    @Column(name = "password_hash", nullable = false, length = 72)
+    private String passwordHash;
+
+    @NotNull(message = "Баланс ecoCoins обязателен")
+    @Min(value = 0, message = "Баланс ecoCoins не может быть отрицательным")
+    @Column(name = "eco_coins_balance", nullable = false)
+    private Long ecoCoinsBalance;
+
+    @NotNull(message = "ESG рейтинг обязателен")
+    @Min(value = 0, message = "ESG рейтинг не может быть меньше 0")
+    @Max(value = 100, message = "ESG рейтинг не может быть больше 100")
+    @Column(name = "esg_rating", nullable = false)
+    private Integer esgRating;
+
+    @NotNull(message = "totalCo2Saved обязателен")
+    @DecimalMin(value = "0.0", inclusive = true, message = "totalCo2Saved не может быть отрицательным")
+    @Digits(integer = 12, fraction = 3, message = "Некорректный формат totalCo2Saved")
+    @Column(name = "total_co2_saved", nullable = false, precision = 15, scale = 3)
+    private BigDecimal totalCo2Saved;
+
+    @NotNull(message = "createdAt обязателен")
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/Vacancy.java ---
+package com.example.green.domain.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+@Entity
+@Table(name = "vacancies")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class Vacancy {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "HR manager обязателен")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "hr_manager_id", nullable = false)
+    private User hrManager;
+
+    @NotBlank(message = "Название компании обязательно")
+    @Size(max = 255, message = "Название компании слишком длинное")
+    @Column(name = "company_name", nullable = false, length = 255)
+    private String companyName;
+
+    @NotBlank(message = "Название вакансии обязательно")
+    @Size(max = 255, message = "Название вакансии слишком длинное")
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+
+    @NotBlank(message = "Описание обязательно")
+    @Column(name = "description", nullable = false, columnDefinition = "text")
+    private String description;
+
+    @NotNull(message = "isPartnerVacancy обязателен")
+    @Column(name = "is_partner_vacancy", nullable = false)
+    private Boolean isPartnerVacancy;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/entity/WasteLog.java ---
+package com.example.green.domain.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "waste_logs")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class WasteLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "User обязателен")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @NotNull(message = "EcoPointContainer обязателен")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "eco_point_container_id", nullable = false)
+    private EcoPointContainer ecoPointContainer;
+
+    @NotNull(message = "scannedAt обязателен")
+    @Column(name = "scanned_at", nullable = false)
+    private LocalDateTime scannedAt;
+
+    @NotNull(message = "ecoCoinsEarned обязателен")
+    @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
+    @Column(name = "eco_coins_earned", nullable = false)
+    private Integer ecoCoinsEarned;
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/enums/JobStatus.java ---
+package com.example.green.domain.enums;
+
+public enum JobStatus {
+    PENDING,
+    REVIEWED,
+    ACCEPTED,
+    REJECTED
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/enums/Role.java ---
+package com.example.green.domain.enums;
+
+public enum Role{
+    STUDENT,
+    EMPLOYEE,
+    HR,
+    ADMIN
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/enums/TripStatus.java ---
+package com.example.green.domain.enums;
+
+public enum TripStatus {
+    CREATED,
+    ACTIVE,
+    COMPLETED,
+    CANCELLED
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/enums/WasteType.java ---
+package com.example.green.domain.enums;
+
+public enum WasteType {
+    PLASTIC,
+    BATTERY,
+    PAPER,
+    GLASS
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/AuthenticationRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.Authentication;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface AuthenticationRepository extends JpaRepository<Authentication, Long> {
+    Optional<Authentication> findByToken(String token);
+    void deleteAllByUserId(Long userId);
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/EcoPointContainerRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.enums.WasteType;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface EcoPointContainerRepository extends JpaRepository<EcoPointContainer, Long> {
+    List<EcoPointContainer> findByWasteTypeAndIsActive(WasteType wasteType, Boolean isActive);
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/JobApplicationRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.JobApplication;
+import com.example.green.domain.enums.JobStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
+    List<JobApplication> findByStudentId(Long studentId);
+    List<JobApplication> findByVacancyId(Long vacancyId);
+    List<JobApplication> findByJobStatus(JobStatus jobStatus);
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/ProfileRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.Profile;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+public interface ProfileRepository extends JpaRepository<Profile, Long> {
+    Optional<Profile> findByUserId(Long userId);
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/TripParticipantRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.TripParticipant;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface TripParticipantRepository extends JpaRepository<TripParticipant, Long> {
+    List<TripParticipant> findByTripId(Long tripId);
+    List<TripParticipant> findByPassengerId(Long passengerId);
+    boolean existsByTripIdAndPassengerId(Long tripId, Long passengerId);
+    Optional<TripParticipant> findByTripIdAndPassengerId(Long tripId, Long passengerId);
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/TripRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.Trip;
+import com.example.green.domain.enums.TripStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+public interface TripRepository extends JpaRepository<Trip, Long> {
+    List<Trip> findByTripStatusAndDepartureTimeAfter(TripStatus status, LocalDateTime time);
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/UserRepository.java ---
+package com.example.green.domain.repository;
+import com.example.green.domain.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+public interface UserRepository extends JpaRepository<User, Long>{
+    Optional<User> findByEmail(String email);
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/VacancyRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.Vacancy;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
+    List<Vacancy> findByHrManagerId(Long hrManagerId);
+    List<Vacancy> findByIsPartnerVacancy(Boolean isPartnerVacancy);
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/domain/repository/WasteLogRepository.java ---
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.WasteLog;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface WasteLogRepository extends JpaRepository<WasteLog, Long> {
+    List<WasteLog> findByUserId(Long userId);
+    List<WasteLog> findByEcoPointContainerId(Long ecoPointContainerId);
+}\n\n--- START OF FILE: ./src/main/java/com/example/green/GreenApplication.java ---
+package com.example.green;
+
+import com.example.green.config.AuthProperties;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@EnableConfigurationProperties(AuthProperties.class) //Enable Auth properties class for jwt parameters
+@SpringBootApplication//here Spring starts to run
+public class GreenApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GreenApplication.class, args);
+    }
+}
+
+\n\n--- START OF FILE: ./src/main/java/com/example/green/security/JwtAuthenticationFilter.java ---
+package com.example.green.security;
+
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.service.JwtService;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+
+        try {
+            Claims claims = jwtService.parse(token);
+            Long userId = Long.parseLong(claims.getSubject());
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    Role role = user.getRole();
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    user.getId(),
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_" + role.name()))
+                            );
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
+        } catch (Exception ignored) {
+            // Некорректный токен -> просто не аутентифицируем контекст
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/AuthService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.LoginRequestDto;
+import com.example.green.api.dto.request.RefreshTokenRequestDto;
+import com.example.green.api.dto.request.RegisterRequestDto;
+import com.example.green.api.dto.response.AuthResponseDto;
+import com.example.green.api.mapper.AuthMapper;
+import com.example.green.config.AuthProperties;
+import com.example.green.domain.entity.Authentication;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
+    private final AuthMapper authMapper;
+    private final AuthProperties authProperties;
+
+    @Transactional
+    public AuthResponseDto register(RegisterRequestDto request) {
+        userRepository.findByEmail(request.getEmail()).ifPresent(u -> {
+            throw new IllegalArgumentException("Email already exists");
+        }); //checking if client wants to register while he is already registered.
+
+        User user = User.builder()
+                .email(request.getEmail())
+                .fullName(request.getFullName())
+                .role(request.getRole())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .ecoCoinsBalance(0L)
+                .esgRating(0)
+                .totalCo2Saved(java.math.BigDecimal.ZERO)
+                .createdAt(LocalDateTime.now())
+                .build(); //building default values for the new user
+
+        User saved = userRepository.save(user);//saving the new user to database
+        String access = jwtService.generateAccessToken(saved);//generating access token for the new user
+        Authentication refresh = refreshTokenService.createRefreshToken(saved, authProperties.getRefreshTtlSeconds()); //Creating Authentication object for the new user
+        // with refresh token
+
+        return authMapper.toDto(saved, access, refresh.getToken(), authProperties.getAccessTtlSeconds(),
+                authProperties.getRefreshTtlSeconds()); //Preparing Response from the server
+    }
+
+    @Transactional
+    public AuthResponseDto login(LoginRequestDto request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));//checking if the user exists
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");// checking if the password is right
+        }
+
+        String accessToken = jwtService.generateAccessToken(user);//access token
+        Authentication newRefresh = refreshTokenService.createRefreshToken(user, authProperties.getRefreshTtlSeconds());//Authentication object with refresh token
+
+        return authMapper.toDto(user,
+                accessToken,
+                newRefresh.getToken(),
+                authProperties.getAccessTtlSeconds(),
+                authProperties.getRefreshTtlSeconds());//Preparing the response from the server
+    }
+
+    @Transactional
+    public AuthResponseDto refresh(RefreshTokenRequestDto request) {
+        Authentication newRefresh = refreshTokenService.updateRefreshToken(
+                request.getRefreshToken(),
+                authProperties.getRefreshTtlSeconds()
+        );
+
+        User user = newRefresh.getUser();
+        String accessToken = jwtService.generateAccessToken(user);
+        //preparing response from the server
+        return authMapper.toDto(user,
+                accessToken,
+                newRefresh.getToken(),
+                authProperties.getAccessTtlSeconds(),
+                authProperties.getRefreshTtlSeconds());
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/EcoPointContainerService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.EcoPointContainerRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.EcoPointContainerMapper;
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.repository.EcoPointContainerRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class EcoPointContainerService {
+    private final EcoPointContainerRepository ecoPointContainerRepository;
+    private final EcoPointContainerMapper ecoPointContainerMapper;
+
+    public List<EcoPointContainerResponseDto> findAll() {
+        return ecoPointContainerRepository.findAll().stream()
+                .map(ecoPointContainerMapper::toDto)
+                .toList();
+    }
+
+    public EcoPointContainerResponseDto findById(Long id) {
+        return ecoPointContainerMapper.toDto(getOrThrow(id));
+    }
+
+    public EcoPointContainerResponseDto create(EcoPointContainerRequestDto request) {
+        EcoPointContainer saved = ecoPointContainerRepository.save(ecoPointContainerMapper.toEntity(request));
+        return ecoPointContainerMapper.toDto(saved);
+    }
+
+    public EcoPointContainerResponseDto update(Long id, EcoPointContainerRequestDto request) {
+        EcoPointContainer entity = getOrThrow(id);
+        ecoPointContainerMapper.updateEntity(entity, request);
+        EcoPointContainer saved = ecoPointContainerRepository.save(entity);
+        return ecoPointContainerMapper.toDto(saved);
+    }
+
+    public void delete(Long id) {
+        if (!ecoPointContainerRepository.existsById(id)) {
+            throw new ResourceNotFoundException("EcoPointContainer not found: id=" + id);
+        }
+        ecoPointContainerRepository.deleteById(id);
+    }
+
+    private EcoPointContainer getOrThrow(Long id) {
+        return ecoPointContainerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/JobApplicationService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.JobApplicationMapper;
+import com.example.green.domain.entity.JobApplication;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.repository.JobApplicationRepository;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.repository.VacancyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class JobApplicationService {
+    private final JobApplicationRepository jobApplicationRepository;
+    private final VacancyRepository vacancyRepository;
+    private final UserRepository userRepository;
+    private final JobApplicationMapper jobApplicationMapper;
+
+    public List<JobApplicationResponseDto> findAll() {
+        return jobApplicationRepository.findAll().stream()
+                .map(jobApplicationMapper::toDto)
+                .toList();
+    }
+
+    public JobApplicationResponseDto findById(Long id) {
+        return jobApplicationMapper.toDto(getJobApplicationOrThrow(id));
+    }
+
+    public JobApplicationResponseDto create(JobApplicationRequestDto request) {
+        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
+        User student = getUserOrThrow(request.getStudentId());
+        JobApplication saved = jobApplicationRepository.save(jobApplicationMapper.toEntity(request, vacancy, student));
+        return jobApplicationMapper.toDto(saved);
+    }
+
+    public JobApplicationResponseDto update(Long id, JobApplicationRequestDto request) {
+        JobApplication entity = getJobApplicationOrThrow(id);
+        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
+        User student = getUserOrThrow(request.getStudentId());
+        jobApplicationMapper.updateEntity(entity, request, vacancy, student);
+        JobApplication saved = jobApplicationRepository.save(entity);
+        return jobApplicationMapper.toDto(saved);
+    }
+
+    public void delete(Long id) {
+        if (!jobApplicationRepository.existsById(id)) {
+            throw new ResourceNotFoundException("JobApplication not found: id=" + id);
+        }
+        jobApplicationRepository.deleteById(id);
+    }
+
+    private JobApplication getJobApplicationOrThrow(Long id) {
+        return jobApplicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("JobApplication not found: id=" + id));
+    }
+
+    private Vacancy getVacancyOrThrow(Long id) {
+        return vacancyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Vacancy not found: id=" + id));
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/JwtService.java ---
+package com.example.green.service;
+
+
+import com.example.green.config.AuthProperties;
+import com.example.green.domain.entity.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+
+@Service
+@RequiredArgsConstructor
+public class JwtService {
+    private final AuthProperties authProperties;
+
+    public String generateAccessToken(User user) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(authProperties.getAccessTtlSeconds());
+
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public Claims parse(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(authProperties.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/ProfileService.java ---
+package com.example.green.service;
+import com.example.green.api.dto.request.ProfileRequestDto;
+import com.example.green.api.dto.response.ProfileResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.ProfileMapper;
+import com.example.green.domain.entity.Profile;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.ProfileRepository;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class ProfileService {
+    private final ProfileRepository profileRepository;
+    private final UserRepository userRepository;
+    private final ProfileMapper profileMapper;
+
+    @Transactional(readOnly = true)
+    public ProfileResponseDto getByUserId(Long userId) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile not found for userId=" + userId));
+        return profileMapper.toDto(profile);
+    }
+
+    @Transactional
+    public ProfileResponseDto upsertByUserId(Long userId, ProfileRequestDto request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseGet(() -> Profile.builder().user(user).build());
+
+
+        profileMapper.updateEntity(profile, request);
+        Profile saved = profileRepository.save(profile);
+        return profileMapper.toDto(saved);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/RefreshTokenService.java ---
+package com.example.green.service;
+
+import com.example.green.domain.entity.Authentication;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.AuthenticationRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class RefreshTokenService {
+    private final AuthenticationRepository authenticationRepository;
+
+    @Transactional
+    public Authentication createRefreshToken(User user, long refreshTtlSeconds) {
+        Authentication token = Authentication.builder()
+                .token(UUID.randomUUID().toString())
+                .user(user)
+                .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshTtlSeconds))
+                .revoked(false)
+                .build();
+
+        return authenticationRepository.save(token);
+    }
+
+    @Transactional
+    public Authentication updateRefreshToken(String rawRefreshToken, long refreshTtlSeconds) {
+        Authentication oldToken = authenticationRepository.findByToken(rawRefreshToken)
+                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+
+        if (Boolean.TRUE.equals(oldToken.getRevoked())) {
+            throw new BadCredentialsException("Refresh token revoked");
+        }
+
+        if (oldToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("Refresh token expired");
+        }
+
+        oldToken.setRevoked(true);
+        authenticationRepository.save(oldToken);
+
+        return createRefreshToken(oldToken.getUser(), refreshTtlSeconds);
+    }
+
+    @Transactional
+    public void deleteAllByUserId(Long userId) {
+        authenticationRepository.deleteAllByUserId(userId);
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/TripParticipantService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.response.TripParticipantResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.TripParticipantMapper;
+import com.example.green.domain.entity.Trip;
+import com.example.green.domain.entity.TripParticipant;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.TripParticipantRepository;
+import com.example.green.domain.repository.TripRepository;
+import com.example.green.domain.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class TripParticipantService {
+    private final TripParticipantRepository tripParticipantRepository;
+    private final TripRepository tripRepository;
+    private final UserRepository userRepository;
+    private final TripParticipantMapper tripParticipantMapper;
+
+    @Transactional
+    public TripParticipantResponseDto joinTrip(Long tripId) {
+        Trip trip = getTripOrThrow(tripId);
+        User passenger = getCurrentUserOrThrow();
+
+        if (trip.isTerminal()) {
+            throw new IllegalStateException("Cannot join completed/cancelled trip");
+        }
+        if (tripParticipantRepository.existsByTripIdAndPassengerId(tripId, passenger.getId())) {
+            throw new IllegalStateException("Passenger already joined this trip");
+        }
+
+        trip.occupySeat();
+
+        TripParticipant saved = tripParticipantRepository.save(
+                tripParticipantMapper.toEntity(trip, passenger)
+        );
+        tripRepository.save(trip);
+
+        return tripParticipantMapper.toDto(saved);
+    }
+    @Transactional
+    public TripParticipantResponseDto leaveTrip(Long tripId) {
+        User passenger = getCurrentUserOrThrow();
+
+        TripParticipant participant = tripParticipantRepository
+                .findByTripIdAndPassengerId(tripId, passenger.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
+
+        Trip trip = participant.getTrip();
+        trip.validateMutable();
+
+        if (Boolean.TRUE.equals(participant.getIsCancelled())) {
+            throw new IllegalStateException("Participation already cancelled");
+        }
+
+        participant.setIsCancelled(true);
+        trip.releaseSeat();
+
+        tripRepository.save(trip);
+        return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
+    }
+
+    private User getCurrentUserOrThrow() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new IllegalStateException("User is not authenticated");
+        }
+        String login = auth.getName();
+        return userRepository.findByEmail(login)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + login));
+    }
+
+    private Trip getTripOrThrow(Long id) {
+        return tripRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/TripService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.TripRequestDto;
+import com.example.green.api.dto.request.TripSearchRequestDto;
+import com.example.green.api.dto.response.TripResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.TripMapper;
+import com.example.green.domain.entity.Trip;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripStatus;
+import com.example.green.domain.repository.TripRepository;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TripService {
+    private final TripRepository tripRepository;
+    private final UserRepository userRepository;
+    private final TripMapper tripMapper;
+
+    public List<TripResponseDto> findAllTrips() {
+        return tripRepository.findAll().stream()
+                .map(tripMapper::toDto)
+                .toList();
+    }
+
+    public Page<TripResponseDto> search(TripSearchRequestDto request) {
+        Sort sort = parseSort(request.getSort());
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+
+        List<TripResponseDto> filtered = tripRepository.findAll().stream()
+                .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
+                .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
+                .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
+                .filter(t -> request.getMinSeats() == null || t.getAvailableSeats() >= request.getMinSeats())
+                .map(tripMapper::toDto)
+                .toList();
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), filtered.size());
+
+        List<TripResponseDto> content =
+                start >= filtered.size() ? List.of() : filtered.subList(start, end);
+
+        return new PageImpl<>(content, pageable, filtered.size());
+    }
+
+    public TripResponseDto findTripById(Long id) {
+        return tripMapper.toDto(getTripOrThrow(id));
+    }
+
+    public TripResponseDto createTrip(TripRequestDto request) {
+        User driver = getCurrentUserOrThrow();
+        Trip saved = tripRepository.save(tripMapper.toEntity(request, driver));
+        return tripMapper.toDto(saved);
+    }
+
+    public TripResponseDto updateTrip(Long id, TripRequestDto request) {
+        Trip entity = getTripOrThrow(id);
+        entity.validateMutable();
+
+        tripMapper.updateEntityWithoutDriverAndStatus(entity, request);
+        Trip saved = tripRepository.save(entity);
+        return tripMapper.toDto(saved);
+    }
+
+    public void deleteTrip(Long id) {
+        if (!tripRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Trip not found: id=" + id);
+        }
+        Trip trip = getTripOrThrow(id);
+        trip.validateMutable();
+        tripRepository.deleteById(id);
+    }
+    public TripResponseDto activateStatus(Long id) {
+        Trip trip = getTripOrThrow(id);
+        trip.changeStatus(TripStatus.ACTIVE);
+        return tripMapper.toDto(tripRepository.save(trip));
+    }
+
+    public TripResponseDto completeStatus(Long id) {
+        Trip trip = getTripOrThrow(id);
+        trip.changeStatus(TripStatus.COMPLETED);
+        return tripMapper.toDto(tripRepository.save(trip));
+    }
+
+    public TripResponseDto cancelStatus (Long id) {
+        Trip trip = getTripOrThrow(id);
+        trip.changeStatus(TripStatus.CANCELLED);
+        return tripMapper.toDto(tripRepository.save(trip));
+    }
+
+
+    private Sort parseSort(String sortRaw) {
+        if (sortRaw == null || sortRaw.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "departureTime");
+        }
+
+        String[] parts = sortRaw.split(",");
+        String field = parts[0].trim();
+        Sort.Direction direction =
+                (parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()))
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC;
+
+        return Sort.by(direction, field);
+    }
+
+    private Trip getTripOrThrow(Long id) {
+        return tripRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    }
+
+    private User getCurrentUserOrThrow() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new IllegalStateException("User is not authenticated");
+        }
+
+        // Обычно тут email/username из JWT
+        String login = auth.getName();
+
+        return userRepository.findByEmail(login) // или findByUsername(login)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + login));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/UserService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.UserRequestDto;
+import com.example.green.api.dto.response.UserResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.UserMapper;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+
+    public List<UserResponseDto> findAll() {
+        return userRepository.findAll().stream()
+                .map(userMapper::toDto)
+                .toList();
+    }
+
+    public UserResponseDto findById(Long id) {
+        return userMapper.toDto(getUserOrThrow(id));
+    }
+
+    public UserResponseDto create(UserRequestDto request) {
+        User saved = userRepository.save(userMapper.toEntity(request));
+        return userMapper.toDto(saved);
+    }
+
+    public UserResponseDto update(Long id, UserRequestDto request) {
+        User entity = getUserOrThrow(id);
+        userMapper.updateEntity(entity, request);
+        User saved = userRepository.save(entity);
+        return userMapper.toDto(saved);
+    }
+
+    public void delete(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User not found: id=" + id);
+        }
+        userRepository.deleteById(id);
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/VacancyService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.VacancyMapper;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.repository.VacancyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class VacancyService {
+    private final VacancyRepository vacancyRepository;
+    private final UserRepository userRepository;
+    private final VacancyMapper vacancyMapper;
+
+    public List<VacancyResponseDto> findAll() {
+        return vacancyRepository.findAll().stream()
+                .map(vacancyMapper::toDto)
+                .toList();
+    }
+
+    public VacancyResponseDto findById(Long id) {
+        return vacancyMapper.toDto(getVacancyOrThrow(id));
+    }
+
+    public VacancyResponseDto create(VacancyRequestDto request) {
+        User hrManager = getUserOrThrow(request.getHrManagerId());
+        Vacancy saved = vacancyRepository.save(vacancyMapper.toEntity(request, hrManager));
+        return vacancyMapper.toDto(saved);
+    }
+
+    public VacancyResponseDto update(Long id, VacancyRequestDto request) {
+        Vacancy entity = getVacancyOrThrow(id);
+        User hrManager = getUserOrThrow(request.getHrManagerId());
+        vacancyMapper.updateEntity(entity, request, hrManager);
+        Vacancy saved = vacancyRepository.save(entity);
+        return vacancyMapper.toDto(saved);
+    }
+
+    public void delete(Long id) {
+        if (!vacancyRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Vacancy not found: id=" + id);
+        }
+        vacancyRepository.deleteById(id);
+    }
+
+    private Vacancy getVacancyOrThrow(Long id) {
+        return vacancyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Vacancy not found: id=" + id));
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    }
+}
+\n\n--- START OF FILE: ./src/main/java/com/example/green/service/WasteLogService.java ---
+package com.example.green.service;
+
+import com.example.green.api.dto.request.WasteLogRequestDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.WasteLogMapper;
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.repository.WasteLogRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class WasteLogService {
+    private final WasteLogRepository wasteLogRepository;
+    private final UserRepository userRepository;
+    private final EcoPointContainerRepository ecoPointContainerRepository;
+    private final WasteLogMapper wasteLogMapper;
+
+    public List<WasteLogResponseDto> findAll() {
+        return wasteLogRepository.findAll().stream()
+                .map(wasteLogMapper::toDto)
+                .toList();
+    }
+
+    public WasteLogResponseDto findById(Long id) {
+        return wasteLogMapper.toDto(getWasteLogOrThrow(id));
+    }
+
+    public WasteLogResponseDto create(WasteLogRequestDto request) {
+        User user = getUserOrThrow(request.getUserId());
+        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
+        WasteLog saved = wasteLogRepository.save(wasteLogMapper.toEntity(request, user, ecoPointContainer));
+        return wasteLogMapper.toDto(saved);
+    }
+
+    public WasteLogResponseDto update(Long id, WasteLogRequestDto request) {
+        WasteLog entity = getWasteLogOrThrow(id);
+        User user = getUserOrThrow(request.getUserId());
+        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
+        wasteLogMapper.updateEntity(entity, request, user, ecoPointContainer);
+        WasteLog saved = wasteLogRepository.save(entity);
+        return wasteLogMapper.toDto(saved);
+    }
+
+    public void delete(Long id) {
+        if (!wasteLogRepository.existsById(id)) {
+            throw new ResourceNotFoundException("WasteLog not found: id=" + id);
+        }
+        wasteLogRepository.deleteById(id);
+    }
+
+    private WasteLog getWasteLogOrThrow(Long id) {
+        return wasteLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("WasteLog not found: id=" + id));
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    }
+
+    private EcoPointContainer getEcoPointOrThrow(Long id) {
+        return ecoPointContainerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
+    }
+}
+
+\n\n--- START OF FILE: ./src/test/java/com/example/green/GreenApplicationTests.java ---
+package com.example.green;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class GreenApplicationTests {
+
+    @Test
+    void contextLoads() {
+    }
+
+}

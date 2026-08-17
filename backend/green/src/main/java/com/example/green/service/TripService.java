@@ -4,13 +4,17 @@ import com.example.green.api.dto.request.TripRequestDto;
 import com.example.green.api.dto.request.TripSearchRequestDto;
 import com.example.green.api.dto.response.TripResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.GeometryMapper;
 import com.example.green.api.mapper.TripMapper;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.enums.TripStatus;
+import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
 import com.example.green.domain.repository.UserRepository;
+import com.example.green.service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
+import org.locationtech.jts.geom.Point;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,6 +32,9 @@ public class TripService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final TripMapper tripMapper;
+    private final GeometryMapper geometryMapper;
+    private final TripParticipantRepository tripParticipantRepository;
+    private final EcoRewardService ecoRewardService;
 
     public List<TripResponseDto> findAllTrips() {
         return tripRepository.findAll().stream()
@@ -39,11 +46,15 @@ public class TripService {
         Sort sort = parseSort(request.getSort());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
 
+        Point originPoint = buildOriginPoint(request);
+
         List<TripResponseDto> filtered = tripRepository.findAll().stream()
                 .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
                 .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
                 .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
                 .filter(t -> request.getMinSeats() == null || t.getAvailableSeats() >= request.getMinSeats())
+                .filter(t -> originPoint == null || request.getRadiusKm() == null
+                        || GeoUtils.distanceKm(t.getDepartureLocation(), originPoint) <= request.getRadiusKm())
                 .map(tripMapper::toDto)
                 .toList();
 
@@ -89,18 +100,36 @@ public class TripService {
         return tripMapper.toDto(tripRepository.save(trip));
     }
 
-    public TripResponseDto completeStatus(Long id) {
-        Trip trip = getTripOrThrow(id);
-        trip.changeStatus(TripStatus.COMPLETED);
-        return tripMapper.toDto(tripRepository.save(trip));
-    }
-
     public TripResponseDto cancelStatus (Long id) {
         Trip trip = getTripOrThrow(id);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
 
+    public TripResponseDto completeStatus(Long tripId) {
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + tripId));
+
+        trip.changeStatus(TripStatus.COMPLETED);
+        tripRepository.save(trip);
+
+        double distanceKm = GeoUtils.distanceKm(trip.getDepartureLocation(), trip.getDestinationLocation());
+
+        ecoRewardService.rewardForTripDistance(trip.getDriver(), distanceKm, trip.getId());
+
+        tripParticipantRepository.findByTripIdAndIsCancelledFalse(trip.getId())
+                .forEach(p -> ecoRewardService.rewardForTripDistance(p.getPassenger(), distanceKm, trip.getId()));
+
+        return tripMapper.toDto(trip);
+    }
+
+    private Point buildOriginPoint(TripSearchRequestDto request) {
+        if (request.getOriginLat() == null || request.getOriginLng() == null) {
+            return null;
+        }
+        String wkt = "POINT(" + request.getOriginLng() + " " + request.getOriginLat() + ")";
+        return geometryMapper.fromWkt(wkt);
+    }
 
     private Sort parseSort(String sortRaw) {
         if (sortRaw == null || sortRaw.isBlank()) {
@@ -133,10 +162,9 @@ public class TripService {
             throw new IllegalStateException("User is not authenticated");
         }
 
-        // Обычно тут email/username из JWT
         String login = auth.getName();
 
-        return userRepository.findByEmail(login) // или findByUsername(login)
+        return userRepository.findByEmail(login)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + login));
     }
 }

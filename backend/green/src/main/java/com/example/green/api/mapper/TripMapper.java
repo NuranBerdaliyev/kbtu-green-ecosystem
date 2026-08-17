@@ -17,6 +17,7 @@ public class TripMapper {
         return Trip.builder()
                 .driver(driver)
                 .departureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()))
+                .destinationLocation(geometryMapper.fromWkt(dto.getDestinationLocationWkt()))
                 .departureTime(dto.getDepartureTime())
                 .totalSeats(dto.getTotalSeats())
                 .availableSeats(dto.getTotalSeats())
@@ -26,6 +27,7 @@ public class TripMapper {
 
     public void updateEntityWithoutDriverAndStatus(Trip entity, TripRequestDto dto) {
         entity.setDepartureLocation(geometryMapper.fromWkt(dto.getDepartureLocationWkt()));
+        entity.setDestinationLocation(geometryMapper.fromWkt(dto.getDestinationLocationWkt()));
         entity.setDepartureTime(dto.getDepartureTime());
         entity.setTotalSeats(dto.getTotalSeats());
     }
@@ -35,6 +37,7 @@ public class TripMapper {
                 .id(entity.getId())
                 .driverId(entity.getDriver().getId())
                 .departureLocationWkt(geometryMapper.toWkt(entity.getDepartureLocation()))
+                .destinationLocationWkt(geometryMapper.toWkt(entity.getDestinationLocation()))
                 .departureTime(entity.getDepartureTime())
                 .totalSeats(entity.getTotalSeats())
                 .availableSeats(entity.getAvailableSeats())

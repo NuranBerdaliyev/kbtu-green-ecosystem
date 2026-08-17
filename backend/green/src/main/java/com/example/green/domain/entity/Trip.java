@@ -45,8 +45,12 @@ public class Trip {
 
     @NotNull(message = "Trip status cannot be blank")
     @Enumerated(EnumType.STRING)
+
     @Column(name = "trip_status", nullable = false, length = 20)
     private TripStatus tripStatus;
+
+    @Column(name = "destination_location", columnDefinition = "geometry(Point,4326)")
+    private Point destinationLocation;
 
     @Builder.Default
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
