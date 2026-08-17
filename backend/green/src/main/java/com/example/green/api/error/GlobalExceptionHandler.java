@@ -176,6 +176,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request.getRequestURI(), Map.of());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), Map.of());
+    }
+
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String message,

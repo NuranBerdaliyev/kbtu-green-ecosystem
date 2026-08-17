@@ -4,22 +4,18 @@ import com.example.green.api.dto.request.LoginRequestDto;
 import com.example.green.api.dto.request.RefreshTokenRequestDto;
 import com.example.green.api.dto.request.RegisterRequestDto;
 import com.example.green.api.dto.response.AuthResponseDto;
-import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.AuthMapper;
 import com.example.green.config.AuthProperties;
 import com.example.green.domain.entity.Authentication;
 import com.example.green.domain.entity.User;
-import com.example.green.domain.repository.AuthenticationRepository;
 import com.example.green.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +49,7 @@ public class AuthService {
         Authentication refresh = refreshTokenService.createRefreshToken(saved, authProperties.getRefreshTtlSeconds()); //Creating Authentication object for the new user
         // with refresh token
 
-        return authMapper.toResponse(saved, access, refresh.getToken(), authProperties.getAccessTtlSeconds(),
+        return authMapper.toDto(saved, access, refresh.getToken(), authProperties.getAccessTtlSeconds(),
                 authProperties.getRefreshTtlSeconds()); //Preparing Response from the server
     }
 
@@ -69,7 +65,7 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user);//access token
         Authentication newRefresh = refreshTokenService.createRefreshToken(user, authProperties.getRefreshTtlSeconds());//Authentication object with refresh token
 
-        return authMapper.toResponse(user,
+        return authMapper.toDto(user,
                 accessToken,
                 newRefresh.getToken(),
                 authProperties.getAccessTtlSeconds(),
@@ -86,7 +82,7 @@ public class AuthService {
         User user = newRefresh.getUser();
         String accessToken = jwtService.generateAccessToken(user);
         //preparing response from the server
-        return authMapper.toResponse(user,
+        return authMapper.toDto(user,
                 accessToken,
                 newRefresh.getToken(),
                 authProperties.getAccessTtlSeconds(),

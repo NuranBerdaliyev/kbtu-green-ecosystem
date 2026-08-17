@@ -10,6 +10,7 @@ public class TripResponseDto {
     private Long id;
     private Long driverId;
     private String departureLocationWkt;
+    private String destinationLocationWkt;
     private LocalDateTime departureTime;
     private Integer totalSeats;
     private Integer availableSeats;
