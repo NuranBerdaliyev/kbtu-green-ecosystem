@@ -49,6 +49,19 @@ public class TripController {
     ) {
         tripService.deleteTrip(tripId);
     }
+
+    //GET /api/carpool/trips/my
+    @GetMapping("/my")
+    public List<TripResponseDto> myTrips() {
+        return tripService.findMyTrips();
+    }
+
+    //GET /api/carpool/trips/joined
+    @GetMapping("/joined")
+    public List<TripResponseDto> joinedTrips() {
+        return tripService.findJoinedTrips();
+    }
+
     // GET /api/carpool/trips/search — search (с пагинацией)
     @GetMapping("/search")
     public Page<TripResponseDto> search(@Valid @ModelAttribute TripSearchRequestDto request) {

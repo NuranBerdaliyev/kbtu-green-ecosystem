@@ -49,7 +49,8 @@ public class Trip {
     @Column(name = "trip_status", nullable = false, length = 20)
     private TripStatus tripStatus;
 
-    @Column(name = "destination_location", columnDefinition = "geometry(Point,4326)")
+    @NotNull(message = "Destination location cannot be blank")
+    @Column(name = "destination_location", nullable = false, columnDefinition = "geometry(Point,4326)")
     private Point destinationLocation;
 
     @Builder.Default

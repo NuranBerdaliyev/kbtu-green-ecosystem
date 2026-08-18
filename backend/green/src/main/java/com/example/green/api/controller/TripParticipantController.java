@@ -7,20 +7,30 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/carpool")
+@RequestMapping("/api/carpool/trips")
 @RequiredArgsConstructor
 @Validated
 public class TripParticipantController {
     private final TripParticipantService tripParticipantService;
-    @PostMapping("trips/{tripId}/participants/join")
+
+    @GetMapping("/{tripId}/participants")
+    public List<TripParticipantResponseDto> getParticipants(
+            @PathVariable @Positive Long tripId
+    ) {
+        return tripParticipantService
+                .getActiveParticipants(tripId);
+    }
+
+    @PostMapping("/{tripId}/participants/join")
     @ResponseStatus(HttpStatus.CREATED)
     public TripParticipantResponseDto join(@PathVariable @Positive Long tripId) {
         return tripParticipantService.joinTrip(tripId);
     }
 
-    @DeleteMapping("trips/{tripId}/participants/leave")
+    @DeleteMapping("/{tripId}/participants/leave")
     public TripParticipantResponseDto leave(@PathVariable @Positive Long tripId) {
         return tripParticipantService.leaveTrip(tripId);
     }

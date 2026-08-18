@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.example.green.domain.enums.TripStatus;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class TripParticipantService {
@@ -24,34 +26,77 @@ public class TripParticipantService {
     private final UserRepository userRepository;
     private final TripParticipantMapper tripParticipantMapper;
 
+    @Transactional(readOnly = true)
+    public List<TripParticipantResponseDto> getActiveParticipants(
+            Long tripId
+    ) {
+        getTripOrThrow(tripId);
+
+        return tripParticipantRepository
+                .findByTripIdAndIsCancelledFalse(tripId)
+                .stream()
+                .map(tripParticipantMapper::toDto)
+                .toList();
+    }
+
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
         User passenger = getCurrentUserOrThrow();
 
         if (trip.getTripStatus() != TripStatus.ACTIVE) {
-            throw new IllegalStateException("Only active trips can be joined");
+            throw new IllegalStateException(
+                    "Only active trips can be joined"
+            );
         }
 
-        if (trip.getDriver().getId().equals(passenger.getId())) {
-            throw new IllegalStateException("Driver cannot join own trip as passenger");
-        }
-
-        if (tripParticipantRepository.existsByTripIdAndPassengerId(
-                tripId,
+        if (trip.getDriver().getId().equals(
                 passenger.getId()
         )) {
-            throw new IllegalStateException("Passenger already joined this trip");
+            throw new IllegalStateException(
+                    "Driver cannot join own trip as passenger"
+            );
         }
 
-        if (trip.getAvailableSeats() <= 0) {
-            throw new IllegalStateException("No available seats");
+        TripParticipant existingParticipant =
+                tripParticipantRepository
+                        .findByTripIdAndPassengerId(
+                                tripId,
+                                passenger.getId()
+                        )
+                        .orElse(null);
+
+        if (existingParticipant != null) {
+            if (!Boolean.TRUE.equals(
+                    existingParticipant.getIsCancelled()
+            )) {
+                throw new IllegalStateException(
+                        "Passenger already joined this trip"
+                );
+            }
+
+            trip.occupySeat();
+            existingParticipant.setIsCancelled(false);
+            existingParticipant.setJoinedAt(
+                    java.time.LocalDateTime.now()
+            );
+
+            tripRepository.save(trip);
+
+            return tripParticipantMapper.toDto(
+                    tripParticipantRepository.save(
+                            existingParticipant
+                    )
+            );
         }
 
         trip.occupySeat();
 
         TripParticipant participant =
-                tripParticipantMapper.toEntity(trip, passenger);
+                tripParticipantMapper.toEntity(
+                        trip,
+                        passenger
+                );
 
         TripParticipant saved =
                 tripParticipantRepository.save(participant);

@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -70,7 +71,38 @@ public class TripService {
     }
 
     public TripResponseDto findTripById(Long id) {
-        return tripMapper.toDto(getTripOrThrow(id));
+        Trip trip = getTripOrThrow(id);
+
+        if (trip.getTripStatus() == TripStatus.CREATED) {
+            requireDriver(trip);
+        }
+
+        return tripMapper.toDto(trip);
+    }
+
+    public List<TripResponseDto> findMyTrips() {
+        User currentUser = getCurrentUserOrThrow();
+
+        return tripRepository
+                .findByDriverIdOrderByDepartureTimeDesc(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(tripMapper::toDto)
+                .toList();
+    }
+
+    public List<TripResponseDto> findJoinedTrips() {
+        User currentUser = getCurrentUserOrThrow();
+
+        return tripParticipantRepository
+                .findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(participant -> participant.getTrip())
+                .map(tripMapper::toDto)
+                .toList();
     }
 
     public TripResponseDto createTrip(TripRequestDto request) {
@@ -88,6 +120,11 @@ public class TripService {
         if (request.getTotalSeats() < occupiedSeats) {
             throw new IllegalStateException(
                     "Total seats cannot be less than occupied seats"
+            );
+        }
+        if (entity.getTripStatus() != TripStatus.CREATED) {
+            throw new IllegalStateException(
+                    "Only CREATED trips can be edited"
             );
         }
 
@@ -127,6 +164,11 @@ public class TripService {
         Trip trip = getTripOrThrow(tripId);
         requireDriver(trip);
 
+        if (trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException(
+                    "Trip cannot be completed before departure time"
+            );
+        }
         trip.changeStatus(TripStatus.COMPLETED);
         tripRepository.save(trip);
 

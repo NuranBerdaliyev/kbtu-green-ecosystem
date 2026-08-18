@@ -595,6 +595,35 @@ public class TripController {
         return tripService.findTripById(tripId);
     }
 
+    //PUT /api/carpool/trips/{tripId}
+    @PutMapping("/{tripId}")
+    public TripResponseDto update(
+            @PathVariable @Positive Long tripId,
+            @RequestBody @Valid TripRequestDto request
+    ) {
+        return tripService.updateTrip(tripId, request);
+    }
+    //DELETE /api/carpool/trips/{tripId}
+    @DeleteMapping("/{tripId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @PathVariable @Positive Long tripId
+    ) {
+        tripService.deleteTrip(tripId);
+    }
+
+    //GET /api/carpool/trips/my
+    @GetMapping("/my")
+    public List<TripResponseDto> myTrips() {
+        return tripService.findMyTrips();
+    }
+
+    //GET /api/carpool/trips/joined
+    @GetMapping("/joined")
+    public List<TripResponseDto> joinedTrips() {
+        return tripService.findJoinedTrips();
+    }
+
     // GET /api/carpool/trips/search — search (с пагинацией)
     @GetMapping("/search")
     public Page<TripResponseDto> search(@Valid @ModelAttribute TripSearchRequestDto request) {
@@ -634,20 +663,30 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/carpool")
+@RequestMapping("/api/carpool/trips")
 @RequiredArgsConstructor
 @Validated
 public class TripParticipantController {
     private final TripParticipantService tripParticipantService;
-    @PostMapping("trips/{tripId}/participants/join")
+
+    @GetMapping("/{tripId}/participants")
+    public List<TripParticipantResponseDto> getParticipants(
+            @PathVariable @Positive Long tripId
+    ) {
+        return tripParticipantService
+                .getActiveParticipants(tripId);
+    }
+
+    @PostMapping("/{tripId}/participants/join")
     @ResponseStatus(HttpStatus.CREATED)
     public TripParticipantResponseDto join(@PathVariable @Positive Long tripId) {
         return tripParticipantService.joinTrip(tripId);
     }
 
-    @DeleteMapping("trips/{tripId}/participants/leave")
+    @DeleteMapping("/{tripId}/participants/leave")
     public TripParticipantResponseDto leave(@PathVariable @Positive Long tripId) {
         return tripParticipantService.leaveTrip(tripId);
     }
@@ -1013,6 +1052,7 @@ package com.example.green.api.dto.request;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Future;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -1027,6 +1067,7 @@ public class TripRequestDto {
     private String destinationLocationWkt;
 
     @NotNull
+    @Future(message = "Departure time must be in the future")
     private LocalDateTime departureTime;
 
     @NotNull
@@ -2497,7 +2538,8 @@ public class Trip {
     @Column(name = "trip_status", nullable = false, length = 20)
     private TripStatus tripStatus;
 
-    @Column(name = "destination_location", columnDefinition = "geometry(Point,4326)")
+    @NotNull(message = "Destination location cannot be blank")
+    @Column(name = "destination_location", nullable = false, columnDefinition = "geometry(Point,4326)")
     private Point destinationLocation;
 
     @Builder.Default
@@ -2913,6 +2955,7 @@ public interface TripParticipantRepository extends JpaRepository<TripParticipant
     boolean existsByTripIdAndPassengerId(Long tripId, Long passengerId);
     Optional<TripParticipant> findByTripIdAndPassengerId(Long tripId, Long passengerId);
     List<TripParticipant> findByTripIdAndIsCancelledFalse(Long tripId);
+    List<TripParticipant> findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(Long passengerId);
 }
 
 
@@ -2930,6 +2973,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 public interface TripRepository extends JpaRepository<Trip, Long> {
     List<Trip> findByTripStatusAndDepartureTimeAfter(TripStatus status, LocalDateTime time);
+    List<Trip> findByDriverIdOrderByDepartureTimeDesc(
+            Long driverId
+    );
 }
 
 
@@ -3548,6 +3594,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.example.green.domain.enums.TripStatus;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class TripParticipantService {
@@ -3556,34 +3604,77 @@ public class TripParticipantService {
     private final UserRepository userRepository;
     private final TripParticipantMapper tripParticipantMapper;
 
+    @Transactional(readOnly = true)
+    public List<TripParticipantResponseDto> getActiveParticipants(
+            Long tripId
+    ) {
+        getTripOrThrow(tripId);
+
+        return tripParticipantRepository
+                .findByTripIdAndIsCancelledFalse(tripId)
+                .stream()
+                .map(tripParticipantMapper::toDto)
+                .toList();
+    }
+
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
         User passenger = getCurrentUserOrThrow();
 
         if (trip.getTripStatus() != TripStatus.ACTIVE) {
-            throw new IllegalStateException("Only active trips can be joined");
+            throw new IllegalStateException(
+                    "Only active trips can be joined"
+            );
         }
 
-        if (trip.getDriver().getId().equals(passenger.getId())) {
-            throw new IllegalStateException("Driver cannot join own trip as passenger");
-        }
-
-        if (tripParticipantRepository.existsByTripIdAndPassengerId(
-                tripId,
+        if (trip.getDriver().getId().equals(
                 passenger.getId()
         )) {
-            throw new IllegalStateException("Passenger already joined this trip");
+            throw new IllegalStateException(
+                    "Driver cannot join own trip as passenger"
+            );
         }
 
-        if (trip.getAvailableSeats() <= 0) {
-            throw new IllegalStateException("No available seats");
+        TripParticipant existingParticipant =
+                tripParticipantRepository
+                        .findByTripIdAndPassengerId(
+                                tripId,
+                                passenger.getId()
+                        )
+                        .orElse(null);
+
+        if (existingParticipant != null) {
+            if (!Boolean.TRUE.equals(
+                    existingParticipant.getIsCancelled()
+            )) {
+                throw new IllegalStateException(
+                        "Passenger already joined this trip"
+                );
+            }
+
+            trip.occupySeat();
+            existingParticipant.setIsCancelled(false);
+            existingParticipant.setJoinedAt(
+                    java.time.LocalDateTime.now()
+            );
+
+            tripRepository.save(trip);
+
+            return tripParticipantMapper.toDto(
+                    tripParticipantRepository.save(
+                            existingParticipant
+                    )
+            );
         }
 
         trip.occupySeat();
 
         TripParticipant participant =
-                tripParticipantMapper.toEntity(trip, passenger);
+                tripParticipantMapper.toEntity(
+                        trip,
+                        passenger
+                );
 
         TripParticipant saved =
                 tripParticipantRepository.save(participant);
@@ -3662,6 +3753,7 @@ import com.example.green.service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -3694,7 +3786,7 @@ public class TripService {
 
         Point originPoint = buildOriginPoint(request);
 
-        List<TripResponseDto> filtered = tripRepository.findAll().stream()
+        List<TripResponseDto> filtered = tripRepository.findAll(sort).stream()
                 .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
                 .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
                 .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
@@ -3717,42 +3809,81 @@ public class TripService {
         return tripMapper.toDto(getTripOrThrow(id));
     }
 
+    public List<TripResponseDto> findMyTrips() {
+        User currentUser = getCurrentUserOrThrow();
+
+        return tripRepository
+                .findByDriverIdOrderByDepartureTimeDesc(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(tripMapper::toDto)
+                .toList();
+    }
+
+    public List<TripResponseDto> findJoinedTrips() {
+        User currentUser = getCurrentUserOrThrow();
+
+        return tripParticipantRepository
+                .findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(participant -> participant.getTrip())
+                .map(tripMapper::toDto)
+                .toList();
+    }
+
     public TripResponseDto createTrip(TripRequestDto request) {
         User driver = getCurrentUserOrThrow();
         Trip saved = tripRepository.save(tripMapper.toEntity(request, driver));
         return tripMapper.toDto(saved);
     }
-
+    @Transactional
     public TripResponseDto updateTrip(Long id, TripRequestDto request) {
         Trip entity = getTripOrThrow(id);
         requireDriver(entity);
         entity.validateMutable();
+        int occupiedSeats = entity.getTotalSeats() - entity.getAvailableSeats();
+
+        if (request.getTotalSeats() < occupiedSeats) {
+            throw new IllegalStateException(
+                    "Total seats cannot be less than occupied seats"
+            );
+        }
 
         tripMapper.updateEntityWithoutDriverAndStatus(entity, request);
+        entity.setAvailableSeats(request.getTotalSeats() - occupiedSeats);
         Trip saved = tripRepository.save(entity);
+
         return tripMapper.toDto(saved);
     }
 
     public void deleteTrip(Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
-        trip.validateMutable();
-        tripRepository.deleteById(id);
+        if (trip.getTripStatus() != TripStatus.CREATED) {
+            throw new IllegalStateException(
+                    "Only CREATED trips can be deleted"
+            );
+        }
+        tripRepository.delete(trip);
     }
+    @Transactional
     public TripResponseDto activateStatus(Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
         trip.changeStatus(TripStatus.ACTIVE);
         return tripMapper.toDto(tripRepository.save(trip));
     }
-
+    @Transactional
     public TripResponseDto cancelStatus (Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
-
+    @Transactional
     public TripResponseDto completeStatus(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
         requireDriver(trip);
@@ -4319,6 +4450,13 @@ CREATE TABLE eco_transactions (
                                   created_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_eco_transactions_user ON eco_transactions(user_id);
+
+========================================
+File: ./green/src/main/resources/db/migration/V6__trip_destination_not_null.sql
+========================================
+
+ALTER TABLE trips
+    ALTER COLUMN destination_location SET NOT NULL;
 
 ========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java
