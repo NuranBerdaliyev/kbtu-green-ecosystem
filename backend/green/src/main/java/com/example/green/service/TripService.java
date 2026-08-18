@@ -17,6 +17,7 @@ import com.example.green.service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -49,7 +50,7 @@ public class TripService {
 
         Point originPoint = buildOriginPoint(request);
 
-        List<TripResponseDto> filtered = tripRepository.findAll().stream()
+        List<TripResponseDto> filtered = tripRepository.findAll(sort).stream()
                 .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
                 .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
                 .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
@@ -77,37 +78,51 @@ public class TripService {
         Trip saved = tripRepository.save(tripMapper.toEntity(request, driver));
         return tripMapper.toDto(saved);
     }
-
+    @Transactional
     public TripResponseDto updateTrip(Long id, TripRequestDto request) {
         Trip entity = getTripOrThrow(id);
         requireDriver(entity);
         entity.validateMutable();
+        int occupiedSeats = entity.getTotalSeats() - entity.getAvailableSeats();
+
+        if (request.getTotalSeats() < occupiedSeats) {
+            throw new IllegalStateException(
+                    "Total seats cannot be less than occupied seats"
+            );
+        }
 
         tripMapper.updateEntityWithoutDriverAndStatus(entity, request);
+        entity.setAvailableSeats(request.getTotalSeats() - occupiedSeats);
         Trip saved = tripRepository.save(entity);
+
         return tripMapper.toDto(saved);
     }
 
     public void deleteTrip(Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
-        trip.validateMutable();
-        tripRepository.deleteById(id);
+        if (trip.getTripStatus() != TripStatus.CREATED) {
+            throw new IllegalStateException(
+                    "Only CREATED trips can be deleted"
+            );
+        }
+        tripRepository.delete(trip);
     }
+    @Transactional
     public TripResponseDto activateStatus(Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
         trip.changeStatus(TripStatus.ACTIVE);
         return tripMapper.toDto(tripRepository.save(trip));
     }
-
+    @Transactional
     public TripResponseDto cancelStatus (Long id) {
         Trip trip = getTripOrThrow(id);
         requireDriver(trip);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
-
+    @Transactional
     public TripResponseDto completeStatus(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
         requireDriver(trip);

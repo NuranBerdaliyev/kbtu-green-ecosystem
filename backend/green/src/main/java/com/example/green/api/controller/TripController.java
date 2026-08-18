@@ -33,6 +33,22 @@ public class TripController {
         return tripService.findTripById(tripId);
     }
 
+    //PUT /api/carpool/trips/{tripId}
+    @PutMapping("/{tripId}")
+    public TripResponseDto update(
+            @PathVariable @Positive Long tripId,
+            @RequestBody @Valid TripRequestDto request
+    ) {
+        return tripService.updateTrip(tripId, request);
+    }
+    //DELETE /api/carpool/trips/{tripId}
+    @DeleteMapping("/{tripId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @PathVariable @Positive Long tripId
+    ) {
+        tripService.deleteTrip(tripId);
+    }
     // GET /api/carpool/trips/search — search (с пагинацией)
     @GetMapping("/search")
     public Page<TripResponseDto> search(@Valid @ModelAttribute TripSearchRequestDto request) {

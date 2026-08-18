@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.example.green.domain.enums.TripStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -28,18 +29,33 @@ public class TripParticipantService {
         Trip trip = getTripOrThrow(tripId);
         User passenger = getCurrentUserOrThrow();
 
-        if (trip.isTerminal()) {
-            throw new IllegalStateException("Cannot join completed/cancelled trip");
+        if (trip.getTripStatus() != TripStatus.ACTIVE) {
+            throw new IllegalStateException("Only active trips can be joined");
         }
-        if (tripParticipantRepository.existsByTripIdAndPassengerId(tripId, passenger.getId())) {
+
+        if (trip.getDriver().getId().equals(passenger.getId())) {
+            throw new IllegalStateException("Driver cannot join own trip as passenger");
+        }
+
+        if (tripParticipantRepository.existsByTripIdAndPassengerId(
+                tripId,
+                passenger.getId()
+        )) {
             throw new IllegalStateException("Passenger already joined this trip");
+        }
+
+        if (trip.getAvailableSeats() <= 0) {
+            throw new IllegalStateException("No available seats");
         }
 
         trip.occupySeat();
 
-        TripParticipant saved = tripParticipantRepository.save(
-                tripParticipantMapper.toEntity(trip, passenger)
-        );
+        TripParticipant participant =
+                tripParticipantMapper.toEntity(trip, passenger);
+
+        TripParticipant saved =
+                tripParticipantRepository.save(participant);
+
         tripRepository.save(trip);
 
         return tripParticipantMapper.toDto(saved);
