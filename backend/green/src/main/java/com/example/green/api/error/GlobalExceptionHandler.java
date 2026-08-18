@@ -184,6 +184,19 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), Map.of());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(
+            ForbiddenException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
+
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String message,

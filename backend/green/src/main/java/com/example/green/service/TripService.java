@@ -3,6 +3,7 @@ package com.example.green.service;
 import com.example.green.api.dto.request.TripRequestDto;
 import com.example.green.api.dto.request.TripSearchRequestDto;
 import com.example.green.api.dto.response.TripResponseDto;
+import com.example.green.api.error.ForbiddenException;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.GeometryMapper;
 import com.example.green.api.mapper.TripMapper;
@@ -79,6 +80,7 @@ public class TripService {
 
     public TripResponseDto updateTrip(Long id, TripRequestDto request) {
         Trip entity = getTripOrThrow(id);
+        requireDriver(entity);
         entity.validateMutable();
 
         tripMapper.updateEntityWithoutDriverAndStatus(entity, request);
@@ -87,28 +89,28 @@ public class TripService {
     }
 
     public void deleteTrip(Long id) {
-        if (!tripRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Trip not found: id=" + id);
-        }
         Trip trip = getTripOrThrow(id);
+        requireDriver(trip);
         trip.validateMutable();
         tripRepository.deleteById(id);
     }
     public TripResponseDto activateStatus(Long id) {
         Trip trip = getTripOrThrow(id);
+        requireDriver(trip);
         trip.changeStatus(TripStatus.ACTIVE);
         return tripMapper.toDto(tripRepository.save(trip));
     }
 
     public TripResponseDto cancelStatus (Long id) {
         Trip trip = getTripOrThrow(id);
+        requireDriver(trip);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
 
     public TripResponseDto completeStatus(Long tripId) {
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + tripId));
+        Trip trip = getTripOrThrow(tripId);
+        requireDriver(trip);
 
         trip.changeStatus(TripStatus.COMPLETED);
         tripRepository.save(trip);
@@ -172,5 +174,13 @@ public class TripService {
         return userRepository.findById(userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found: id=" + userId));
+    }
+
+    private void requireDriver(Trip trip) {
+        User currentUser = getCurrentUserOrThrow();
+
+        if (!trip.getDriver().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Only the trip driver can perform this action");
+        }
     }
 }
