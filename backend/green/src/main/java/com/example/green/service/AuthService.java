@@ -14,6 +14,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.green.domain.enums.Role;
 
 import java.time.LocalDateTime;
 
@@ -36,7 +37,7 @@ public class AuthService {
         User user = User.builder()
                 .email(request.getEmail())
                 .fullName(request.getFullName())
-                .role(request.getRole())
+                .role(Role.STUDENT)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .ecoCoinsBalance(0L)
                 .esgRating(0)

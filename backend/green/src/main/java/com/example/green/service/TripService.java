@@ -158,13 +158,19 @@ public class TripService {
 
     private User getCurrentUserOrThrow() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
         if (auth == null || !auth.isAuthenticated()) {
             throw new IllegalStateException("User is not authenticated");
         }
 
-        String login = auth.getName();
+        Object principal = auth.getPrincipal();
 
-        return userRepository.findByEmail(login)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + login));
+        if (!(principal instanceof Long userId)) {
+            throw new IllegalStateException("Invalid authentication principal");
+        }
+
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found: id=" + userId));
     }
 }
