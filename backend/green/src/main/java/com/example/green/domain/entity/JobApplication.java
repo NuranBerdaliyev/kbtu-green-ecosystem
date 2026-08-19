@@ -20,27 +20,57 @@ public class JobApplication {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Vacancy обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "vacancy_id", nullable = false)
     private Vacancy vacancy;
 
-    @NotNull(message = "Student обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @NotNull(message = "Дата подачи обязательна")
+    @NotNull
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    @NotBlank(message = "Cover letter обязателен")
-    @Size(min = 10, max = 5000, message = "Cover letter должен быть от 10 до 5000 символов")
+    @NotBlank
+    @Size(min = 10, max = 5000, message = "Cover letter has to be between 10 and 5000 chars")
     @Column(name = "cover_letter", nullable = false, columnDefinition = "text")
     private String coverLetter;
 
-    @NotNull(message = "Статус заявки обязателен")
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "job_status", nullable = false, length = 20)
     private JobStatus jobStatus;
+
+    public void changeStatus(JobStatus next) {
+        if (next == null) {
+            throw new IllegalArgumentException("Job status cannot be null");
+        }
+
+        if (jobStatus == next) {
+            return;
+        }
+
+        boolean allowed = switch (jobStatus) {
+            case PENDING ->
+                    next == JobStatus.REVIEWED;
+
+            case REVIEWED ->
+                    next == JobStatus.ACCEPTED
+                            || next == JobStatus.REJECTED;
+
+            case ACCEPTED, REJECTED -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "Invalid job application status transition: "
+                            + jobStatus + " -> " + next
+            );
+        }
+
+        this.jobStatus = next;
+    }
 }

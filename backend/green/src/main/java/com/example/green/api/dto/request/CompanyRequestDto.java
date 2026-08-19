@@ -5,8 +5,16 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class JobApplicationRequestDto {
+public class CompanyRequestDto {
+
     @NotBlank
-    @Size(min = 10, max = 5000)
-    private String coverLetter;
+    @Size(max = 255)
+    private String name;
+
+    private String description;
+
+    @Size(max = 500)
+    private String website;
+
+    private Boolean isPartner;
 }

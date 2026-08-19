@@ -415,6 +415,65 @@ public class AuthController {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/controller/CompanyController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.CompanyRequestDto;
+import com.example.green.api.dto.response.CompanyResponseDto;
+import com.example.green.service.CompanyService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/career/companies")
+@RequiredArgsConstructor
+@Validated
+public class CompanyController {
+
+    private final CompanyService companyService;
+
+    @GetMapping
+    public List<CompanyResponseDto> findAll() {
+        return companyService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public CompanyResponseDto findById(@PathVariable @Positive Long id) {
+        return companyService.findById(id);
+    }
+
+    @GetMapping("/my")
+    public List<CompanyResponseDto> myCompanies() {
+        return companyService.findMyCompanies();
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CompanyResponseDto create(@Valid @RequestBody CompanyRequestDto request) {
+        return companyService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public CompanyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody CompanyRequestDto request) {
+        return companyService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive Long id) {
+        companyService.delete(id);
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/controller/EcoPointController.java
 ========================================
 
@@ -476,6 +535,8 @@ File: ./green/src/main/java/com/example/green/api/controller/JobApplicationContr
 package com.example.green.api.controller;
 
 import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.request.JobApplicationStatusRequestDto;
+import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
 import com.example.green.service.JobApplicationService;
 import jakarta.validation.Valid;
@@ -488,41 +549,37 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/job-applications")
+@RequestMapping("/api/career")
 @RequiredArgsConstructor
 @Validated
 public class JobApplicationController {
     private final JobApplicationService jobApplicationService;
 
-    @GetMapping
-    public List<JobApplicationResponseDto> findAll() {
-        return jobApplicationService.findAll();
-    }
-
-    @GetMapping("/{id}")
-    public JobApplicationResponseDto findById(@PathVariable @Positive Long id) {
-        return jobApplicationService.findById(id);
-    }
-
-    @PostMapping
+    @PostMapping("/vacancies/{vacancyId}/applications")
     @ResponseStatus(HttpStatus.CREATED)
-    public JobApplicationResponseDto create(@RequestBody @Valid JobApplicationRequestDto request) {
-        return jobApplicationService.create(request);
+    public JobApplicationResponseDto apply(@PathVariable @Positive Long vacancyId, @Valid @RequestBody JobApplicationRequestDto request) {
+        return jobApplicationService.apply(
+                vacancyId,
+                request
+        );
     }
 
-    @PutMapping("/{id}")
-    public JobApplicationResponseDto update(@PathVariable @Positive Long id,
-                                            @RequestBody @Valid JobApplicationRequestDto request) {
-        return jobApplicationService.update(id, request);
+    @GetMapping("/applications/my")
+    public List<JobApplicationResponseDto> myApplications() {
+        return jobApplicationService
+                .findMyApplications();
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable @Positive Long id) {
-        jobApplicationService.delete(id);
+    @GetMapping("/vacancies/{vacancyId}/applications")
+    public List<CandidateResponseDto> candidates(@PathVariable @Positive Long vacancyId) {
+        return jobApplicationService.findCandidates(vacancyId);
+    }
+
+    @PatchMapping("/applications/{applicationId}/status")
+    public CandidateResponseDto changeStatus(@PathVariable @Positive Long applicationId, @Valid @RequestBody JobApplicationStatusRequestDto request) {
+        return jobApplicationService.changeStatus(applicationId, request);
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/controller/ProfileController.java
@@ -755,11 +812,13 @@ File: ./green/src/main/java/com/example/green/api/controller/VacancyController.j
 package com.example.green.api.controller;
 
 import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.request.VacancySearchRequestDto;
 import com.example.green.api.dto.response.VacancyResponseDto;
 import com.example.green.service.VacancyService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -767,15 +826,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/vacancies")
+@RequestMapping("/api/career/vacancies")
 @RequiredArgsConstructor
 @Validated
 public class VacancyController {
     private final VacancyService vacancyService;
 
     @GetMapping
-    public List<VacancyResponseDto> findAll() {
-        return vacancyService.findAll();
+    public Page<VacancyResponseDto> search(@Valid @ModelAttribute VacancySearchRequestDto request) {
+        return vacancyService.search(request);
+    }
+
+    @GetMapping("/my")
+    public List<VacancyResponseDto> myVacancies() {
+        return vacancyService.findMyVacancies();
     }
 
     @GetMapping("/{id}")
@@ -785,13 +849,12 @@ public class VacancyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public VacancyResponseDto create(@RequestBody @Valid VacancyRequestDto request) {
+    public VacancyResponseDto create(@Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.create(request);
     }
 
     @PutMapping("/{id}")
-    public VacancyResponseDto update(@PathVariable @Positive Long id,
-                                     @RequestBody @Valid VacancyRequestDto request) {
+    public VacancyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.update(id, request);
     }
 
@@ -801,8 +864,6 @@ public class VacancyController {
         vacancyService.delete(id);
     }
 }
-
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/controller/WasteLogController.java
@@ -860,6 +921,31 @@ public class WasteLogController {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/CompanyRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class CompanyRequestDto {
+
+    @NotBlank
+    @Size(max = 255)
+    private String name;
+
+    private String description;
+
+    @Size(max = 500)
+    private String website;
+
+    private Boolean isPartner;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/EcoPointContainerRequestDto.java
 ========================================
 
@@ -900,33 +986,31 @@ File: ./green/src/main/java/com/example/green/api/dto/request/JobApplicationRequ
 
 package com.example.green.api.dto.request;
 
-import com.example.green.domain.enums.JobStatus;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class JobApplicationRequestDto {
-    @NotNull
-    private Long vacancyId;
-
-    @NotNull
-    private Long studentId;
-
-    @NotNull
-    private LocalDateTime appliedAt;
-
     @NotBlank
     @Size(min = 10, max = 5000)
     private String coverLetter;
-
-    @NotNull
-    private JobStatus jobStatus;
 }
 
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/JobApplicationStatusRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+import com.example.green.domain.enums.JobStatus;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class JobApplicationStatusRequestDto {
+    @NotNull
+    private JobStatus status;
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/LoginRequestDto.java
@@ -1180,11 +1264,7 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VacancyRequestDto {
     @NotNull
-    private Long hrManagerId;
-
-    @NotBlank
-    @Size(max = 255)
-    private String companyName;
+    private Long companyId;
 
     @NotBlank
     @Size(max = 255)
@@ -1192,9 +1272,30 @@ public class VacancyRequestDto {
 
     @NotBlank
     private String description;
+}
 
-    @NotNull
-    private Boolean isPartnerVacancy;
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/VacancySearchRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.Min;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class VacancySearchRequestDto {
+    private String query;
+    private Long companyId;
+    private Boolean partnerOnly;
+
+    @Min(0)
+    @Builder.Default
+    private Integer page = 0;
+
+    @Min(1)
+    @Builder.Default
+    private Integer size = 20;
 }
 
 ========================================
@@ -1253,6 +1354,53 @@ public class AuthResponseDto {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/CandidateResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.JobStatus;
+import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class CandidateResponseDto {
+    private Long applicationId;
+    private Long studentId;
+    private String fullName;
+    private Integer esgRating;
+    private Long ecoCoinsBalance;
+    private BigDecimal totalCo2Saved;
+    private String coverLetter;
+    private LocalDateTime appliedAt;
+    private JobStatus jobStatus;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/CompanyResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CompanyResponseDto {
+
+    private Long id;
+    private Long hrManagerId;
+    private String name;
+    private String description;
+    private String website;
+    private Boolean isPartner;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/EcoPointContainerResponseDto.java
 ========================================
 
@@ -1288,12 +1436,13 @@ import java.time.LocalDateTime;
 public class JobApplicationResponseDto {
     private Long id;
     private Long vacancyId;
-    private Long studentId;
+    private String vacancyTitle;
+    private Long companyId;
+    private String companyName;
     private LocalDateTime appliedAt;
     private String coverLetter;
     private JobStatus jobStatus;
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/ProfileResponseDto.java
@@ -1402,13 +1551,13 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VacancyResponseDto {
     private Long id;
-    private Long hrManagerId;
+    private Long companyId;
     private String companyName;
+    private Long hrManagerId;
     private String title;
     private String description;
-    private Boolean isPartnerVacancy;
+    private Boolean partnerCompany;
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/WasteLogResponseDto.java
@@ -1739,6 +1888,51 @@ public class AuthMapper {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/mapper/CompanyMapper.java
+========================================
+
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.request.CompanyRequestDto;
+import com.example.green.api.dto.response.CompanyResponseDto;
+import com.example.green.domain.entity.Company;
+import com.example.green.domain.entity.User;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CompanyMapper {
+    public Company toEntity(CompanyRequestDto dto, User hrManager) {
+        return Company.builder()
+                .hrManager(hrManager)
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .website(dto.getWebsite())
+                .isPartner(Boolean.TRUE.equals(dto.getIsPartner()))
+                .build();
+    }
+
+    public void updateEntity(Company company, CompanyRequestDto dto) {
+        company.setName(dto.getName());
+        company.setDescription(dto.getDescription());
+        company.setWebsite(dto.getWebsite());
+        company.setIsPartner(
+                Boolean.TRUE.equals(dto.getIsPartner())
+        );
+    }
+
+    public CompanyResponseDto toDto(Company company) {
+        return CompanyResponseDto.builder()
+                .id(company.getId())
+                .hrManagerId(company.getHrManager().getId())
+                .name(company.getName())
+                .description(company.getDescription())
+                .website(company.getWebsite())
+                .isPartner(company.getIsPartner())
+                .build();
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/mapper/EcoPointContainerMapper.java
 ========================================
 
@@ -1833,45 +2027,71 @@ File: ./green/src/main/java/com/example/green/api/mapper/JobApplicationMapper.ja
 
 package com.example.green.api.mapper;
 
-import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
 import com.example.green.domain.entity.JobApplication;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.JobStatus;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 public class JobApplicationMapper {
-    public JobApplication toEntity(JobApplicationRequestDto dto, Vacancy vacancy, User student) {
+
+    public JobApplication toEntity(
+            String coverLetter,
+            Vacancy vacancy,
+            User student
+    ) {
         return JobApplication.builder()
                 .vacancy(vacancy)
                 .student(student)
-                .appliedAt(dto.getAppliedAt())
-                .coverLetter(dto.getCoverLetter())
-                .jobStatus(dto.getJobStatus())
+                .appliedAt(LocalDateTime.now())
+                .coverLetter(coverLetter)
+                .jobStatus(JobStatus.PENDING)
                 .build();
     }
 
-    public void updateEntity(JobApplication entity, JobApplicationRequestDto dto, Vacancy vacancy, User student) {
-        entity.setVacancy(vacancy);
-        entity.setStudent(student);
-        entity.setAppliedAt(dto.getAppliedAt());
-        entity.setCoverLetter(dto.getCoverLetter());
-        entity.setJobStatus(dto.getJobStatus());
-    }
-
-    public JobApplicationResponseDto toDto(JobApplication entity) {
+    public JobApplicationResponseDto toDto(
+            JobApplication entity
+    ) {
         return JobApplicationResponseDto.builder()
                 .id(entity.getId())
                 .vacancyId(entity.getVacancy().getId())
-                .studentId(entity.getStudent().getId())
+                .vacancyTitle(entity.getVacancy().getTitle())
+                .companyId(
+                        entity.getVacancy()
+                                .getCompany()
+                                .getId()
+                )
+                .companyName(
+                        entity.getVacancy()
+                                .getCompany()
+                                .getName()
+                )
                 .appliedAt(entity.getAppliedAt())
                 .coverLetter(entity.getCoverLetter())
                 .jobStatus(entity.getJobStatus())
                 .build();
     }
-}
 
+    public CandidateResponseDto toCandidateDto(JobApplication entity) {
+        User student = entity.getStudent();
+        return CandidateResponseDto.builder()
+                .applicationId(entity.getId())
+                .studentId(student.getId())
+                .fullName(student.getFullName())
+                .esgRating(student.getEsgRating())
+                .ecoCoinsBalance(student.getEcoCoinsBalance())
+                .totalCo2Saved(student.getTotalCo2Saved())
+                .coverLetter(entity.getCoverLetter())
+                .appliedAt(entity.getAppliedAt())
+                .jobStatus(entity.getJobStatus())
+                .build();
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/ProfileMapper.java
@@ -2070,42 +2290,42 @@ package com.example.green.api.mapper;
 
 import com.example.green.api.dto.request.VacancyRequestDto;
 import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.domain.entity.Company;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
 import org.springframework.stereotype.Component;
 
 @Component
 public class VacancyMapper {
-    public Vacancy toEntity(VacancyRequestDto dto, User hrManager) {
+    public Vacancy toEntity(VacancyRequestDto dto, User hrManager, Company company) {
         return Vacancy.builder()
                 .hrManager(hrManager)
-                .companyName(dto.getCompanyName())
+                .company(company)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
-                .isPartnerVacancy(dto.getIsPartnerVacancy())
                 .build();
     }
 
-    public void updateEntity(Vacancy entity, VacancyRequestDto dto, User hrManager) {
-        entity.setHrManager(hrManager);
-        entity.setCompanyName(dto.getCompanyName());
-        entity.setTitle(dto.getTitle());
-        entity.setDescription(dto.getDescription());
-        entity.setIsPartnerVacancy(dto.getIsPartnerVacancy());
+    public void updateEntity(Vacancy vacancy, VacancyRequestDto dto, Company company) {
+        vacancy.setCompany(company);
+        vacancy.setTitle(dto.getTitle());
+        vacancy.setDescription(dto.getDescription());
     }
 
-    public VacancyResponseDto toDto(Vacancy entity) {
+    public VacancyResponseDto toDto(Vacancy vacancy) {
         return VacancyResponseDto.builder()
-                .id(entity.getId())
-                .hrManagerId(entity.getHrManager().getId())
-                .companyName(entity.getCompanyName())
-                .title(entity.getTitle())
-                .description(entity.getDescription())
-                .isPartnerVacancy(entity.getIsPartnerVacancy())
+                .id(vacancy.getId())
+                .companyId(vacancy.getCompany().getId())
+                .companyName(vacancy.getCompany().getName())
+                .hrManagerId(vacancy.getHrManager().getId())
+                .title(vacancy.getTitle())
+                .description(vacancy.getDescription())
+                .partnerCompany(
+                        vacancy.getCompany().getIsPartner()
+                )
                 .build();
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/WasteLogMapper.java
@@ -2281,6 +2501,58 @@ public class Authentication {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/entity/Company.java
+========================================
+
+package com.example.green.domain.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+@Entity
+@Table(name = "companies",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_company_hr_name", columnNames = {"hr_manager_id", "name"}
+                )
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Company {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "hr_manager_id", nullable = false)
+    private User hrManager;
+
+    @NotBlank
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
+    private String name;
+
+    @Column(columnDefinition = "text")
+    private String description;
+
+    @Size(max = 500)
+    @Column(length = 500)
+    private String website;
+
+    @NotNull
+    @Column(name = "is_partner", nullable = false)
+    private Boolean isPartner;
+}
+
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/entity/EcoPointContainer.java
 ========================================
 
@@ -2406,29 +2678,59 @@ public class JobApplication {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Vacancy обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "vacancy_id", nullable = false)
     private Vacancy vacancy;
 
-    @NotNull(message = "Student обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @NotNull(message = "Дата подачи обязательна")
+    @NotNull
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    @NotBlank(message = "Cover letter обязателен")
-    @Size(min = 10, max = 5000, message = "Cover letter должен быть от 10 до 5000 символов")
+    @NotBlank
+    @Size(min = 10, max = 5000, message = "Cover letter has to be between 10 and 5000 chars")
     @Column(name = "cover_letter", nullable = false, columnDefinition = "text")
     private String coverLetter;
 
-    @NotNull(message = "Статус заявки обязателен")
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "job_status", nullable = false, length = 20)
     private JobStatus jobStatus;
+
+    public void changeStatus(JobStatus next) {
+        if (next == null) {
+            throw new IllegalArgumentException("Job status cannot be null");
+        }
+
+        if (jobStatus == next) {
+            return;
+        }
+
+        boolean allowed = switch (jobStatus) {
+            case PENDING ->
+                    next == JobStatus.REVIEWED;
+
+            case REVIEWED ->
+                    next == JobStatus.ACCEPTED
+                            || next == JobStatus.REJECTED;
+
+            case ACCEPTED, REJECTED -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "Invalid job application status transition: "
+                            + jobStatus + " -> " + next
+            );
+        }
+
+        this.jobStatus = next;
+    }
 }
 
 
@@ -2719,35 +3021,35 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 @Entity
-@Table(name = "vacancies")
+@Table(name = "vacancies",
+        indexes = {
+                @Index(name = "idx_vacancies_company", columnList = "company_id")
+        }
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Vacancy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "HR manager обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "hr_manager_id", nullable = false)
     private User hrManager;
 
-    @NotBlank(message = "Название компании обязательно")
-    @Size(max = 255, message = "Название компании слишком длинное")
-    @Column(name = "company_name", nullable = false, length = 255)
-    private String companyName;
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
-    @NotBlank(message = "Название вакансии обязательно")
-    @Size(max = 255, message = "Название вакансии слишком длинное")
+    @NotBlank
+    @Size(max = 255, message = "Title size is too big")
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @NotBlank(message = "Описание обязательно")
+    @NotBlank
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
-
-    @NotNull(message = "isPartnerVacancy обязателен")
-    @Column(name = "is_partner_vacancy", nullable = false)
-    private Boolean isPartnerVacancy;
 }
 
 
@@ -2875,6 +3177,20 @@ public interface AuthenticationRepository extends JpaRepository<Authentication, 
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/repository/CompanyRepository.java
+========================================
+
+package com.example.green.domain.repository;
+import com.example.green.domain.entity.Company;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface CompanyRepository extends JpaRepository<Company, Long> {
+    List<Company> findByHrManagerIdOrderByNameAsc(Long hrManagerId);
+    boolean existsByHrManagerIdAndNameIgnoreCase(Long hrManagerId, String name);
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/repository/EcoPointContainerRepository.java
 ========================================
 
@@ -2917,6 +3233,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
+    List<JobApplication> findByStudentIdOrderByAppliedAtDesc(Long studentId);
+    List<JobApplication> findByVacancyIdOrderByAppliedAtDesc(Long vacancyId);
+    boolean existsByVacancyIdAndStudentId(Long vacancyId, Long studentId);
+    boolean existsByVacancyId(Long vacancyId);
     List<JobApplication> findByStudentId(Long studentId);
     List<JobApplication> findByVacancyId(Long vacancyId);
     List<JobApplication> findByJobStatus(JobStatus jobStatus);
@@ -3001,12 +3321,13 @@ package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.Vacancy;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
 
-public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
-    List<Vacancy> findByHrManagerId(Long hrManagerId);
-    List<Vacancy> findByIsPartnerVacancy(Boolean isPartnerVacancy);
+public interface VacancyRepository extends JpaRepository<Vacancy, Long>,
+        JpaSpecificationExecutor<Vacancy> {
+    List<Vacancy> findByHrManagerIdOrderByIdDesc(Long hrManagerId);
+    boolean existsByCompanyId(Long companyId);
 }
 
 ========================================
@@ -3221,6 +3542,164 @@ public class AuthService {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/service/CompanyService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.request.CompanyRequestDto;
+import com.example.green.api.dto.response.CompanyResponseDto;
+import com.example.green.api.error.ForbiddenException;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.CompanyMapper;
+import com.example.green.domain.entity.Company;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.CompanyRepository;
+import com.example.green.domain.repository.VacancyRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CompanyService {
+    private final CompanyRepository companyRepository;
+    private final VacancyRepository vacancyRepository;
+    private final CompanyMapper companyMapper;
+    private final CurrentUserService currentUserService;
+
+    @Transactional(readOnly = true)
+    public List<CompanyResponseDto> findAll() {
+        return companyRepository.findAll()
+                .stream()
+                .map(companyMapper::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CompanyResponseDto findById(Long id) {
+        return companyMapper.toDto(
+                getCompanyOrThrow(id)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyResponseDto> findMyCompanies() {
+        User hr = requireHr();
+        return companyRepository
+                .findByHrManagerIdOrderByNameAsc(hr.getId())
+                .stream()
+                .map(companyMapper::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public CompanyResponseDto create(CompanyRequestDto request) {
+        User hr = requireHr();
+        if (companyRepository.existsByHrManagerIdAndNameIgnoreCase(hr.getId(), request.getName())) {
+            throw new IllegalStateException("Company with this name already exists");
+        }
+        Company company = companyMapper.toEntity(request, hr);
+        return companyMapper.toDto(companyRepository.save(company));
+    }
+
+    @Transactional
+    public CompanyResponseDto update(Long id, CompanyRequestDto request) {
+        Company company = getCompanyOrThrow(id);
+        requireCompanyOwner(company);
+        companyMapper.updateEntity(company, request);
+
+        return companyMapper.toDto(companyRepository.save(company));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Company company = getCompanyOrThrow(id);
+        requireCompanyOwner(company);
+        if (vacancyRepository.existsByCompanyId(id)) {
+            throw new IllegalStateException("Company with vacancies cannot be deleted");
+        }
+        companyRepository.delete(company);
+    }
+
+    private Company getCompanyOrThrow(Long id) {
+        return companyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found: id=" + id));
+    }
+
+    private User requireHr() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.HR) {
+            throw new ForbiddenException("Only HR users can perform this action");
+        }
+        return user;
+    }
+
+    private void requireCompanyOwner(Company company) {
+        User current = requireHr();
+        if (!company.getHrManager()
+                .getId()
+                .equals(current.getId())) {
+
+            throw new ForbiddenException("Only company owner can perform this action");
+        }
+    }
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/service/CurrentUserService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class CurrentUserService {
+
+    private final UserRepository userRepository;
+
+    public User getCurrentUserOrThrow() {
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new IllegalStateException(
+                    "User is not authenticated"
+            );
+        }
+
+        Object principal = auth.getPrincipal();
+
+        if (!(principal instanceof Long userId)) {
+            throw new IllegalStateException(
+                    "Invalid authentication principal"
+            );
+        }
+
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found: id=" + userId
+                        )
+                );
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/service/EcoPointContainerService.java
 ========================================
 
@@ -3337,17 +3816,21 @@ File: ./green/src/main/java/com/example/green/service/JobApplicationService.java
 package com.example.green.service;
 
 import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.request.JobApplicationStatusRequestDto;
+import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.api.error.ForbiddenException;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.JobApplicationMapper;
 import com.example.green.domain.entity.JobApplication;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.JobApplicationRepository;
-import com.example.green.domain.repository.UserRepository;
 import com.example.green.domain.repository.VacancyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -3356,45 +3839,76 @@ import java.util.List;
 public class JobApplicationService {
     private final JobApplicationRepository jobApplicationRepository;
     private final VacancyRepository vacancyRepository;
-    private final UserRepository userRepository;
     private final JobApplicationMapper jobApplicationMapper;
+    private final CurrentUserService currentUserService;
 
-    public List<JobApplicationResponseDto> findAll() {
-        return jobApplicationRepository.findAll().stream()
+    @Transactional
+    public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
+        User student = requireStudent();
+        Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        if (jobApplicationRepository.existsByVacancyIdAndStudentId(vacancyId, student.getId())) {
+            throw new IllegalStateException("Student already applied to this vacancy");
+        }
+
+        JobApplication application = jobApplicationMapper.toEntity(request.getCoverLetter(), vacancy, student);
+        return jobApplicationMapper.toDto(jobApplicationRepository.save(application));
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobApplicationResponseDto> findMyApplications() {
+        User student = requireStudent();
+        return jobApplicationRepository
+                .findByStudentIdOrderByAppliedAtDesc(
+                        student.getId()
+                )
+                .stream()
                 .map(jobApplicationMapper::toDto)
                 .toList();
     }
 
-    public JobApplicationResponseDto findById(Long id) {
-        return jobApplicationMapper.toDto(getJobApplicationOrThrow(id));
+    @Transactional(readOnly = true)
+    public List<CandidateResponseDto> findCandidates(Long vacancyId) {
+        Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        requireVacancyOwner(vacancy);
+        return jobApplicationRepository.findByVacancyIdOrderByAppliedAtDesc(vacancyId)
+                .stream()
+                .map(jobApplicationMapper::toCandidateDto)
+                .toList();
     }
 
-    public JobApplicationResponseDto create(JobApplicationRequestDto request) {
-        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
-        User student = getUserOrThrow(request.getStudentId());
-        JobApplication saved = jobApplicationRepository.save(jobApplicationMapper.toEntity(request, vacancy, student));
-        return jobApplicationMapper.toDto(saved);
+    @Transactional
+    public CandidateResponseDto changeStatus(Long applicationId, JobApplicationStatusRequestDto request) {
+        JobApplication application = getApplicationOrThrow(applicationId);
+        requireVacancyOwner(application.getVacancy());
+        application.changeStatus(request.getStatus());
+
+        return jobApplicationMapper.toCandidateDto(jobApplicationRepository.save(application));
     }
 
-    public JobApplicationResponseDto update(Long id, JobApplicationRequestDto request) {
-        JobApplication entity = getJobApplicationOrThrow(id);
-        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
-        User student = getUserOrThrow(request.getStudentId());
-        jobApplicationMapper.updateEntity(entity, request, vacancy, student);
-        JobApplication saved = jobApplicationRepository.save(entity);
-        return jobApplicationMapper.toDto(saved);
-    }
-
-    public void delete(Long id) {
-        if (!jobApplicationRepository.existsById(id)) {
-            throw new ResourceNotFoundException("JobApplication not found: id=" + id);
+    private User requireStudent() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.STUDENT) {
+            throw new ForbiddenException("Only students can apply for vacancies");
         }
-        jobApplicationRepository.deleteById(id);
+
+        return user;
     }
 
-    private JobApplication getJobApplicationOrThrow(Long id) {
-        return jobApplicationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("JobApplication not found: id=" + id));
+    private User requireHr() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.HR) {
+            throw new ForbiddenException("Only HR users can perform this action");
+        }
+
+        return user;
+    }
+
+    private void requireVacancyOwner(Vacancy vacancy) {
+        User hr = requireHr();
+
+        if (!vacancy.getHrManager().getId().equals(hr.getId())) {
+            throw new ForbiddenException("Only vacancy owner can access its applications");
+        }
     }
 
     private Vacancy getVacancyOrThrow(Long id) {
@@ -3402,12 +3916,14 @@ public class JobApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Vacancy not found: id=" + id));
     }
 
-    private User getUserOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    private JobApplication getApplicationOrThrow(Long id) {
+        return jobApplicationRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("JobApplication not found: id=" + id)
+                );
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/JwtService.java
@@ -3587,8 +4103,6 @@ import com.example.green.domain.entity.User;
 import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
 import com.example.green.domain.repository.UserRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -3603,6 +4117,7 @@ public class TripParticipantService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final TripParticipantMapper tripParticipantMapper;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public List<TripParticipantResponseDto> getActiveParticipants(
@@ -3620,7 +4135,7 @@ public class TripParticipantService {
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
-        User passenger = getCurrentUserOrThrow();
+        User passenger = currentUserService.getCurrentUserOrThrow();
 
         if (trip.getTripStatus() != TripStatus.ACTIVE) {
             throw new IllegalStateException(
@@ -3685,7 +4200,7 @@ public class TripParticipantService {
     }
     @Transactional
     public TripParticipantResponseDto leaveTrip(Long tripId) {
-        User passenger = getCurrentUserOrThrow();
+        User passenger = currentUserService.getCurrentUserOrThrow();
 
         TripParticipant participant = tripParticipantRepository
                 .findByTripIdAndPassengerId(tripId, passenger.getId())
@@ -3703,24 +4218,6 @@ public class TripParticipantService {
 
         tripRepository.save(trip);
         return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
-    }
-
-    private User getCurrentUserOrThrow() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("User is not authenticated");
-        }
-
-        Object principal = auth.getPrincipal();
-
-        if (!(principal instanceof Long userId)) {
-            throw new IllegalStateException("Invalid authentication principal");
-        }
-
-        return userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found: id=" + userId));
     }
 
     private Trip getTripOrThrow(Long id) {
@@ -3752,9 +4249,7 @@ import com.example.green.domain.repository.UserRepository;
 import com.example.green.service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
-import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -3774,6 +4269,7 @@ public class TripService {
     private final GeometryMapper geometryMapper;
     private final TripParticipantRepository tripParticipantRepository;
     private final EcoRewardService ecoRewardService;
+    private final CurrentUserService currentUserService;
 
     public List<TripResponseDto> findAllTrips() {
         return tripRepository.findAll().stream()
@@ -3817,7 +4313,7 @@ public class TripService {
     }
 
     public List<TripResponseDto> findMyTrips() {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         return tripRepository
                 .findByDriverIdOrderByDepartureTimeDesc(
@@ -3829,7 +4325,7 @@ public class TripService {
     }
 
     public List<TripResponseDto> findJoinedTrips() {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         return tripParticipantRepository
                 .findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(
@@ -3842,7 +4338,7 @@ public class TripService {
     }
 
     public TripResponseDto createTrip(TripRequestDto request) {
-        User driver = getCurrentUserOrThrow();
+        User driver = currentUserService.getCurrentUserOrThrow();
         Trip saved = tripRepository.save(tripMapper.toEntity(request, driver));
         return tripMapper.toDto(saved);
     }
@@ -3951,26 +4447,8 @@ public class TripService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
     }
 
-    private User getCurrentUserOrThrow() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("User is not authenticated");
-        }
-
-        Object principal = auth.getPrincipal();
-
-        if (!(principal instanceof Long userId)) {
-            throw new IllegalStateException("Invalid authentication principal");
-        }
-
-        return userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found: id=" + userId));
-    }
-
     private void requireDriver(Trip trip) {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         if (!trip.getDriver().getId().equals(currentUser.getId())) {
             throw new ForbiddenException("Only the trip driver can perform this action");
@@ -4072,67 +4550,162 @@ File: ./green/src/main/java/com/example/green/service/VacancyService.java
 package com.example.green.service;
 
 import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.request.VacancySearchRequestDto;
 import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.api.error.ForbiddenException;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.VacancyMapper;
+import com.example.green.domain.entity.Company;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
-import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.CompanyRepository;
+import com.example.green.domain.repository.JobApplicationRepository;
 import com.example.green.domain.repository.VacancyRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class VacancyService {
     private final VacancyRepository vacancyRepository;
-    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final JobApplicationRepository jobApplicationRepository;
     private final VacancyMapper vacancyMapper;
+    private final CurrentUserService currentUserService;
 
-    public List<VacancyResponseDto> findAll() {
-        return vacancyRepository.findAll().stream()
+    @Transactional(readOnly = true)
+    public Page<VacancyResponseDto> search(VacancySearchRequestDto request) {
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(),
+                Sort.by(Sort.Direction.DESC, "id")
+        );
+        Specification<Vacancy> specification = buildSpecification(request);
+
+        return vacancyRepository
+                .findAll(specification, pageable)
+                .map(vacancyMapper::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public VacancyResponseDto findById(Long id) {
+        return vacancyMapper.toDto(
+                getVacancyOrThrow(id)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<VacancyResponseDto> findMyVacancies() {
+        User hr = requireHr();
+        return vacancyRepository
+                .findByHrManagerIdOrderByIdDesc(
+                        hr.getId()
+                )
+                .stream()
                 .map(vacancyMapper::toDto)
                 .toList();
     }
 
-    public VacancyResponseDto findById(Long id) {
-        return vacancyMapper.toDto(getVacancyOrThrow(id));
-    }
-
+    @Transactional
     public VacancyResponseDto create(VacancyRequestDto request) {
-        User hrManager = getUserOrThrow(request.getHrManagerId());
-        Vacancy saved = vacancyRepository.save(vacancyMapper.toEntity(request, hrManager));
-        return vacancyMapper.toDto(saved);
+        User hr = requireHr();
+        Company company = getCompanyOrThrow(request.getCompanyId());
+        requireCompanyOwner(company, hr);
+        Vacancy vacancy = vacancyMapper.toEntity(request, hr, company);
+
+        return vacancyMapper.toDto(vacancyRepository.save(vacancy));
     }
 
+    @Transactional
     public VacancyResponseDto update(Long id, VacancyRequestDto request) {
-        Vacancy entity = getVacancyOrThrow(id);
-        User hrManager = getUserOrThrow(request.getHrManagerId());
-        vacancyMapper.updateEntity(entity, request, hrManager);
-        Vacancy saved = vacancyRepository.save(entity);
-        return vacancyMapper.toDto(saved);
+        Vacancy vacancy = getVacancyOrThrow(id);
+        User hr = requireVacancyOwner(vacancy);
+        Company company = getCompanyOrThrow(request.getCompanyId());
+        requireCompanyOwner(company, hr);
+        vacancyMapper.updateEntity(vacancy, request, company);
+
+        return vacancyMapper.toDto(vacancyRepository.save(vacancy));
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!vacancyRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Vacancy not found: id=" + id);
+        Vacancy vacancy = getVacancyOrThrow(id);
+        requireVacancyOwner(vacancy);
+
+        if (jobApplicationRepository.existsByVacancyId(id)) {
+            throw new IllegalStateException("Vacancy with applications cannot be deleted");
         }
-        vacancyRepository.deleteById(id);
+        vacancyRepository.delete(vacancy);
+    }
+
+    private Specification<Vacancy> buildSpecification(VacancySearchRequestDto request) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (request.getQuery() != null && !request.getQuery().isBlank()) {
+                String pattern = "%" + request.getQuery().toLowerCase().trim() + "%";
+                Predicate title = cb.like(cb.lower(root.get("title")), pattern);
+                Predicate description = cb.like(cb.lower(root.get("description")), pattern);
+
+                predicates.add(
+                        cb.or(title, description)
+                );
+            }
+
+            if (request.getCompanyId() != null) {
+                predicates.add(cb.equal(root.get("company").get("id"), request.getCompanyId()));
+            }
+
+            if (Boolean.TRUE.equals(request.getPartnerOnly())) {
+                predicates.add(cb.isTrue(root.get("company").get("isPartner")));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     private Vacancy getVacancyOrThrow(Long id) {
         return vacancyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vacancy not found: id=" + id));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Vacancy not found: id=" + id)
+                );
     }
 
-    private User getUserOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    private Company getCompanyOrThrow(Long id) {
+        return companyRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Company not found: id=" + id)
+                );
+    }
+
+    private User requireHr() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.HR) {
+            throw new ForbiddenException("Only HR users can perform this action");
+        }
+        return user;
+    }
+
+    private User requireVacancyOwner(Vacancy vacancy) {
+        User hr = requireHr();
+        if (!vacancy.getHrManager().getId().equals(hr.getId())) {
+            throw new ForbiddenException("Only vacancy owner can perform this action");
+        }
+        return hr;
+    }
+
+    private void requireCompanyOwner(Company company, User hr) {
+        if (!company.getHrManager().getId().equals(hr.getId())) {
+            throw new ForbiddenException("HR cannot create vacancy for another company");
+        }
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/WasteLogService.java
@@ -4474,6 +5047,63 @@ File: ./green/src/main/resources/db/migration/V6__trip_destination_not_null.sql
 
 ALTER TABLE trips
     ALTER COLUMN destination_location SET NOT NULL;
+
+========================================
+File: ./green/src/main/resources/db/migration/V7__career_hub.sql
+========================================
+
+CREATE TABLE companies (
+    id BIGSERIAL PRIMARY KEY,
+    hr_manager_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    website VARCHAR(500),
+    is_partner BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_companies_hr_manager
+        FOREIGN KEY (hr_manager_id)
+        REFERENCES users(id),
+
+    CONSTRAINT uk_company_hr_name
+        UNIQUE (hr_manager_id, name),
+
+    CONSTRAINT chk_companies_name_not_blank
+        CHECK (btrim(name) <> '')
+);
+
+CREATE INDEX idx_companies_hr_manager
+    ON companies(hr_manager_id);
+
+
+ALTER TABLE vacancies
+    ADD COLUMN company_id BIGINT;
+
+ALTER TABLE vacancies
+    ALTER COLUMN company_id SET NOT NULL;
+
+
+ALTER TABLE vacancies
+    ADD CONSTRAINT fk_vacancies_company
+        FOREIGN KEY (company_id)
+            REFERENCES companies(id);
+
+
+CREATE INDEX idx_vacancies_company
+    ON vacancies(company_id);
+
+
+ALTER TABLE vacancies
+    DROP COLUMN company_name;
+
+ALTER TABLE vacancies
+    DROP COLUMN is_partner_vacancy;
+
+
+CREATE INDEX idx_job_app_student
+    ON job_applications(student_id);
+
+CREATE INDEX idx_job_app_vacancy
+    ON job_applications(vacancy_id);
 
 ========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java

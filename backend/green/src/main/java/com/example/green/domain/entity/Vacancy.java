@@ -5,33 +5,33 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 @Entity
-@Table(name = "vacancies")
+@Table(name = "vacancies",
+        indexes = {
+                @Index(name = "idx_vacancies_company", columnList = "company_id")
+        }
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Vacancy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "HR manager обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "hr_manager_id", nullable = false)
     private User hrManager;
 
-    @NotBlank(message = "Название компании обязательно")
-    @Size(max = 255, message = "Название компании слишком длинное")
-    @Column(name = "company_name", nullable = false, length = 255)
-    private String companyName;
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
-    @NotBlank(message = "Название вакансии обязательно")
-    @Size(max = 255, message = "Название вакансии слишком длинное")
+    @NotBlank
+    @Size(max = 255, message = "Title size is too big")
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @NotBlank(message = "Описание обязательно")
+    @NotBlank
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
-
-    @NotNull(message = "isPartnerVacancy обязателен")
-    @Column(name = "is_partner_vacancy", nullable = false)
-    private Boolean isPartnerVacancy;
 }

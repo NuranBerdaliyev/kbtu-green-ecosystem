@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 public class JobApplicationResponseDto {
     private Long id;
     private Long vacancyId;
-    private Long studentId;
+    private String vacancyTitle;
+    private Long companyId;
+    private String companyName;
     private LocalDateTime appliedAt;
     private String coverLetter;
     private JobStatus jobStatus;

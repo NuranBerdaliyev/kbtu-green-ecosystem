@@ -1,11 +1,13 @@
 package com.example.green.api.controller;
 
 import com.example.green.api.dto.request.VacancyRequestDto;
+import com.example.green.api.dto.request.VacancySearchRequestDto;
 import com.example.green.api.dto.response.VacancyResponseDto;
 import com.example.green.service.VacancyService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -13,15 +15,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/vacancies")
+@RequestMapping("/api/career/vacancies")
 @RequiredArgsConstructor
 @Validated
 public class VacancyController {
     private final VacancyService vacancyService;
 
     @GetMapping
-    public List<VacancyResponseDto> findAll() {
-        return vacancyService.findAll();
+    public Page<VacancyResponseDto> search(@Valid @ModelAttribute VacancySearchRequestDto request) {
+        return vacancyService.search(request);
+    }
+
+    @GetMapping("/my")
+    public List<VacancyResponseDto> myVacancies() {
+        return vacancyService.findMyVacancies();
     }
 
     @GetMapping("/{id}")
@@ -31,13 +38,12 @@ public class VacancyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public VacancyResponseDto create(@RequestBody @Valid VacancyRequestDto request) {
+    public VacancyResponseDto create(@Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.create(request);
     }
 
     @PutMapping("/{id}")
-    public VacancyResponseDto update(@PathVariable @Positive Long id,
-                                     @RequestBody @Valid VacancyRequestDto request) {
+    public VacancyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.update(id, request);
     }
 
@@ -47,4 +53,3 @@ public class VacancyController {
         vacancyService.delete(id);
     }
 }
-
