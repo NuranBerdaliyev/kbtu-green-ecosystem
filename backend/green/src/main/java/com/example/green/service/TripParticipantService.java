@@ -9,8 +9,6 @@ import com.example.green.domain.entity.User;
 import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
 import com.example.green.domain.repository.UserRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +23,7 @@ public class TripParticipantService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final TripParticipantMapper tripParticipantMapper;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public List<TripParticipantResponseDto> getActiveParticipants(
@@ -42,7 +41,7 @@ public class TripParticipantService {
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
         Trip trip = getTripOrThrow(tripId);
-        User passenger = getCurrentUserOrThrow();
+        User passenger = currentUserService.getCurrentUserOrThrow();
 
         if (trip.getTripStatus() != TripStatus.ACTIVE) {
             throw new IllegalStateException(
@@ -107,7 +106,7 @@ public class TripParticipantService {
     }
     @Transactional
     public TripParticipantResponseDto leaveTrip(Long tripId) {
-        User passenger = getCurrentUserOrThrow();
+        User passenger = currentUserService.getCurrentUserOrThrow();
 
         TripParticipant participant = tripParticipantRepository
                 .findByTripIdAndPassengerId(tripId, passenger.getId())
@@ -125,24 +124,6 @@ public class TripParticipantService {
 
         tripRepository.save(trip);
         return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
-    }
-
-    private User getCurrentUserOrThrow() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("User is not authenticated");
-        }
-
-        Object principal = auth.getPrincipal();
-
-        if (!(principal instanceof Long userId)) {
-            throw new IllegalStateException("Invalid authentication principal");
-        }
-
-        return userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found: id=" + userId));
     }
 
     private Trip getTripOrThrow(Long id) {

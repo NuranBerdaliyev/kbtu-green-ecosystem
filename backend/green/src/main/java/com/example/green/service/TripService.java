@@ -16,9 +16,7 @@ import com.example.green.domain.repository.UserRepository;
 import com.example.green.service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
-import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,6 +36,7 @@ public class TripService {
     private final GeometryMapper geometryMapper;
     private final TripParticipantRepository tripParticipantRepository;
     private final EcoRewardService ecoRewardService;
+    private final CurrentUserService currentUserService;
 
     public List<TripResponseDto> findAllTrips() {
         return tripRepository.findAll().stream()
@@ -81,7 +80,7 @@ public class TripService {
     }
 
     public List<TripResponseDto> findMyTrips() {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         return tripRepository
                 .findByDriverIdOrderByDepartureTimeDesc(
@@ -93,7 +92,7 @@ public class TripService {
     }
 
     public List<TripResponseDto> findJoinedTrips() {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         return tripParticipantRepository
                 .findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(
@@ -106,7 +105,7 @@ public class TripService {
     }
 
     public TripResponseDto createTrip(TripRequestDto request) {
-        User driver = getCurrentUserOrThrow();
+        User driver = currentUserService.getCurrentUserOrThrow();
         Trip saved = tripRepository.save(tripMapper.toEntity(request, driver));
         return tripMapper.toDto(saved);
     }
@@ -215,26 +214,8 @@ public class TripService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
     }
 
-    private User getCurrentUserOrThrow() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("User is not authenticated");
-        }
-
-        Object principal = auth.getPrincipal();
-
-        if (!(principal instanceof Long userId)) {
-            throw new IllegalStateException("Invalid authentication principal");
-        }
-
-        return userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found: id=" + userId));
-    }
-
     private void requireDriver(Trip trip) {
-        User currentUser = getCurrentUserOrThrow();
+        User currentUser = currentUserService.getCurrentUserOrThrow();
 
         if (!trip.getDriver().getId().equals(currentUser.getId())) {
             throw new ForbiddenException("Only the trip driver can perform this action");
