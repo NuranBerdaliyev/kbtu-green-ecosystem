@@ -62,126 +62,6 @@ build/
 
 
 ========================================
-File: ./green/.idea/.gitignore
-========================================
-
-# Default ignored files
-/shelf/
-/workspace.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-# Ignored default folder with query files
-/queries/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
-
-
-========================================
-File: ./green/.idea/misc.xml
-========================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ExternalStorageConfigurationManager" enabled="true" />
-  <component name="KubernetesApiPersistence">{}</component>
-  <component name="KubernetesApiProvider">{
-  &quot;isMigrated&quot;: true
-}</component>
-  <component name="MavenProjectsManager">
-    <option name="originalFiles">
-      <list>
-        <option value="$PROJECT_DIR$/pom.xml" />
-      </list>
-    </option>
-  </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="openjdk-26" project-jdk-type="JavaSDK">
-    <output url="file://$PROJECT_DIR$/out" />
-  </component>
-</project>
-
-========================================
-File: ./green/.idea/vcs.xml
-========================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="VcsDirectoryMappings">
-    <mapping directory="$PROJECT_DIR$/../.." vcs="Git" />
-  </component>
-</project>
-
-========================================
-File: ./green/.idea/workspace.xml
-========================================
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="AutoImportSettings">
-    <option name="autoReloadType" value="SELECTIVE" />
-  </component>
-  <component name="ChangeListManager">
-    <list default="true" id="864b2dba-72aa-4ad9-8f45-7e35190ef10a" name="Changes" comment="" />
-    <option name="SHOW_DIALOG" value="false" />
-    <option name="HIGHLIGHT_CONFLICTS" value="true" />
-    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
-    <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
-  </component>
-  <component name="MavenImportPreferences">
-    <option name="generalSettings">
-      <MavenGeneralSettings>
-        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
-      </MavenGeneralSettings>
-    </option>
-  </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 2,
-  "fromUser": false
-}]]></component>
-  <component name="ProjectId" id="3HDsjtFerq8Wk9DbiD8wB2rmDMN" />
-  <component name="ProjectViewState">
-    <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showLibraryContents" value="true" />
-  </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "Nuran",
-    "kotlin-language-version-configured": "true",
-    "nodejs_package_manager_path": "npm"
-  }
-}]]></component>
-  <component name="SharedIndexes">
-    <attachedChunks>
-      <set>
-        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.26222.65" />
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.26222.65" />
-      </set>
-    </attachedChunks>
-  </component>
-  <component name="TaskManager">
-    <task active="true" id="Default" summary="Default task">
-      <changelist id="864b2dba-72aa-4ad9-8f45-7e35190ef10a" name="Changes" comment="" />
-      <created>1785414117548</created>
-      <option name="number" value="Default" />
-      <option name="presentableId" value="Default" />
-      <updated>1785414117548</updated>
-    </task>
-    <servers />
-  </component>
-  <component name="TypeScriptGeneratedFilesManager">
-    <option name="version" value="3" />
-  </component>
-</project>
-
-========================================
 File: ./green/.mvn/wrapper/maven-wrapper.properties
 ========================================
 
@@ -527,6 +407,48 @@ public class EcoPointController {
     }
 }
 
+
+========================================
+File: ./green/src/main/java/com/example/green/api/controller/EcoPointsActionController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.WasteDepositRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.service.EcoPointsActionService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/eco-points")
+@RequiredArgsConstructor
+@Validated
+public class EcoPointsActionController {
+    private final EcoPointsActionService actionService;
+
+    // 获取所有激活状态的回收箱列表及实时满溢度
+    @GetMapping
+    public List<EcoPointContainerResponseDto> getActiveContainers() {
+        return actionService.getActiveContainers();
+    }
+
+    // 接收 qrCodeToken 与投递参数进行积分计算并更新数据
+    @PostMapping("/deposit")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WasteLogResponseDto deposit(@Valid @RequestBody WasteDepositRequestDto request) {
+        // JwtAuthenticationFilter 在拦截时已经将解析得到的 userId 作为 Principal 存入上下文
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return actionService.processDeposit(userId, request);
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/controller/JobApplicationController.java
@@ -1296,6 +1218,33 @@ public class VacancySearchRequestDto {
     @Min(1)
     @Builder.Default
     private Integer size = 20;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/WasteDepositRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class WasteDepositRequestDto {
+    @NotBlank
+    private String qrCodeToken;
+
+    // 垃圾投递参数：体积增长(满溢度增加百分比)
+    @NotNull
+    @Min(1)
+    private Integer addedFullnessPercentage;
+
+    // 垃圾投递参数：重量(克)，用于供Gamification系统计算积分与碳减排
+    @NotNull
+    @Min(1)
+    private Integer wasteWeightGrams;
 }
 
 ========================================
@@ -2451,6 +2400,38 @@ public class SecurityConfig {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/config/WebSocketConfig.java
+========================================
+
+package com.example.green.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config) {
+        // 配置基于内存的消息代理，暴露两个频道: 一个给普通广播，一个给管理员预警
+        config.enableSimpleBroker("/topic");
+        config.setApplicationDestinationPrefixes("/app");
+    }
+
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 客户端连接 WebSocket 的入口
+        registry.addEndpoint("/ws-green")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/entity/Authentication.java
 ========================================
 
@@ -3201,9 +3182,16 @@ import com.example.green.domain.enums.WasteType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface EcoPointContainerRepository extends JpaRepository<EcoPointContainer, Long> {
     List<EcoPointContainer> findByWasteTypeAndIsActive(WasteType wasteType, Boolean isActive);
+
+    // 新增：获取所有激活状态的回收箱
+    List<EcoPointContainer> findByIsActiveTrue();
+
+    // 新增：根据二维码 token 查询回收箱
+    Optional<EcoPointContainer> findByQrCodeToken(String qrCodeToken);
 }
 
 ========================================
@@ -3759,6 +3747,94 @@ public class EcoPointContainerService {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/service/EcoPointsActionService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.request.WasteDepositRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.EcoPointContainerMapper;
+import com.example.green.api.mapper.WasteLogMapper;
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.repository.WasteLogRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class EcoPointsActionService {
+    private final EcoPointContainerRepository containerRepo;
+    private final WasteLogRepository wasteLogRepo;
+    private final UserRepository userRepository;
+    private final GamificationService gamificationService;
+    private final SimpMessagingTemplate messagingTemplate; // WebSocket 推送模版
+    private final EcoPointContainerMapper containerMapper;
+    private final WasteLogMapper wasteLogMapper;
+
+    @Transactional(readOnly = true)
+    public List<EcoPointContainerResponseDto> getActiveContainers() {
+        return containerRepo.findByIsActiveTrue()
+                .stream()
+                .map(containerMapper::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public WasteLogResponseDto processDeposit(Long userId, WasteDepositRequestDto request) {
+        // 1. 校验二维码与激活状态
+        EcoPointContainer container = containerRepo.findByQrCodeToken(request.getQrCodeToken())
+                .orElseThrow(() -> new ResourceNotFoundException("Неверный QR-код или контейнер не найден"));
+
+        if (!container.getIsActive()) {
+            throw new IllegalStateException("Контейнер не активен");
+        }
+
+        // 2. 更新满溢度
+        int newFullness = container.getFullnessPercentage() + request.getAddedFullnessPercentage();
+        if (newFullness > 100) newFullness = 100;
+        container.setFullnessPercentage(newFullness);
+        containerRepo.save(container);
+
+        // 3. WebSocket 实时广播
+        EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
+        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
+
+        // 若满溢度超 90%，发送管理员阈值预警
+        if (newFullness >= 90) {
+            messagingTemplate.convertAndSend("/topic/admin/alerts",
+                    "Внимание! Контейнер ID " + container.getId() + " заполнен на " + newFullness + "%!");
+        }
+
+        // 4. 计算奖励并发放积分与 ESG
+        int earnedCoins = gamificationService.processDepositRewards(userId, container.getId(), request.getWasteWeightGrams());
+
+        // 5. 记录投递日志
+        User user = userRepository.getReferenceById(userId);
+        WasteLog log = WasteLog.builder()
+                .user(user)
+                .ecoPointContainer(container)
+                .scannedAt(LocalDateTime.now())
+                .ecoCoinsEarned(earnedCoins)
+                .build();
+        wasteLogRepo.save(log);
+
+        return wasteLogMapper.toDto(log);
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/service/EcoRewardService.java
 ========================================
 
@@ -3806,6 +3882,62 @@ public class EcoRewardService {
                 .co2SavedDelta(co2Saved)
                 .createdAt(LocalDateTime.now())
                 .build());
+    }
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/service/GamificationService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.domain.entity.EcoTransaction;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.EcoTransactionSource;
+import com.example.green.domain.repository.EcoTransactionRepository;
+import com.example.green.domain.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class GamificationService {
+    private final UserRepository userRepository;
+    private final EcoTransactionRepository ecoTransactionRepository;
+
+    @Transactional
+    public int processDepositRewards(Long userId, Long containerId, Integer wasteWeightGrams) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+
+        // 积分与ESG计算规则 (示例：每100g = 1 EcoCoin, 每次成功投递 +1 ESG)
+        int ecoCoinsEarned = Math.max(1, wasteWeightGrams / 100);
+        int esgIncrease = 1;
+        BigDecimal co2Saved = BigDecimal.valueOf(wasteWeightGrams * 0.005); // 碳减排计算系数
+
+        // 更新用户信息
+        user.setEcoCoinsBalance(user.getEcoCoinsBalance() + ecoCoinsEarned);
+        user.setEsgRating(Math.min(100, user.getEsgRating() + esgIncrease)); // ESG 封顶100
+        user.setTotalCo2Saved(user.getTotalCo2Saved().add(co2Saved));
+        userRepository.save(user);
+
+        // 写入交易记录
+        EcoTransaction tx = EcoTransaction.builder()
+                .user(user)
+                .source(EcoTransactionSource.WASTE_DEPOSIT)
+                .referenceId(containerId)
+                .ecoCoinsDelta((long) ecoCoinsEarned)
+                .co2SavedDelta(co2Saved)
+                .createdAt(LocalDateTime.now())
+                .build();
+        ecoTransactionRepository.save(tx);
+
+        return ecoCoinsEarned;
     }
 }
 
