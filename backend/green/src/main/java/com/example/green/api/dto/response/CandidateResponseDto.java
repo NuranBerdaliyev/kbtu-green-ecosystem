@@ -13,6 +13,7 @@ public class CandidateResponseDto {
     private Integer esgRating;
     private Long ecoCoinsBalance;
     private BigDecimal totalCo2Saved;
+    private Boolean recommended;
     private String coverLetter;
     private LocalDateTime appliedAt;
     private JobStatus jobStatus;

@@ -1,5 +1,6 @@
 package com.example.green.api.controller;
 
+import com.example.green.api.dto.request.CompanyPartnerStatusRequestDto;
 import com.example.green.api.dto.request.CompanyRequestDto;
 import com.example.green.api.dto.response.CompanyResponseDto;
 import com.example.green.service.CompanyService;
@@ -44,6 +45,15 @@ public class CompanyController {
     @PutMapping("/{id}")
     public CompanyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody CompanyRequestDto request) {
         return companyService.update(id, request);
+    }
+
+    @PatchMapping("/{id}/partner-status")
+    public CompanyResponseDto changePartnerStatus(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody
+            CompanyPartnerStatusRequestDto request
+    ) {
+        return companyService.changePartnerStatus(id, request);
     }
 
     @DeleteMapping("/{id}")

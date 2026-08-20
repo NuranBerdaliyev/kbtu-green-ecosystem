@@ -50,7 +50,7 @@ public class JobApplicationMapper {
                 .build();
     }
 
-    public CandidateResponseDto toCandidateDto(JobApplication entity) {
+    public CandidateResponseDto toCandidateDto(JobApplication entity, boolean recommended) {
         User student = entity.getStudent();
         return CandidateResponseDto.builder()
                 .applicationId(entity.getId())
@@ -59,6 +59,7 @@ public class JobApplicationMapper {
                 .esgRating(student.getEsgRating())
                 .ecoCoinsBalance(student.getEcoCoinsBalance())
                 .totalCo2Saved(student.getTotalCo2Saved())
+                .recommended(recommended)
                 .coverLetter(entity.getCoverLetter())
                 .appliedAt(entity.getAppliedAt())
                 .jobStatus(entity.getJobStatus())

@@ -10,6 +10,7 @@ import com.example.green.api.mapper.JobApplicationMapper;
 import com.example.green.domain.entity.JobApplication;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.CandidateSort;
 import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.JobApplicationRepository;
 import com.example.green.domain.repository.VacancyRepository;
@@ -26,6 +27,7 @@ public class JobApplicationService {
     private final VacancyRepository vacancyRepository;
     private final JobApplicationMapper jobApplicationMapper;
     private final CurrentUserService currentUserService;
+    private static final int RECOMMENDED_ESG_THRESHOLD = 70;
 
     @Transactional
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
@@ -52,12 +54,36 @@ public class JobApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<CandidateResponseDto> findCandidates(Long vacancyId) {
+    public List<CandidateResponseDto> findCandidates(Long vacancyId, CandidateSort sort) {
         Vacancy vacancy = getVacancyOrThrow(vacancyId);
         requireVacancyOwner(vacancy);
-        return jobApplicationRepository.findByVacancyIdOrderByAppliedAtDesc(vacancyId)
-                .stream()
-                .map(jobApplicationMapper::toCandidateDto)
+        CandidateSort effectiveSort = sort == null ? CandidateSort.ESG_DESC : sort;
+        List<JobApplication> applications = switch (effectiveSort) {
+            case ESG_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(
+                                    vacancyId
+                            );
+
+            case APPLIED_AT_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByAppliedAtDesc(vacancyId);
+        };
+        return applications.stream()
+                .map(application -> {
+                    Integer esg = application
+                            .getStudent()
+                            .getEsgRating();
+
+                    boolean recommended =
+                            esg != null
+                                    && esg >= RECOMMENDED_ESG_THRESHOLD;
+
+                    return jobApplicationMapper.toCandidateDto(
+                            application,
+                            recommended
+                    );
+                })
                 .toList();
     }
 
@@ -67,7 +93,11 @@ public class JobApplicationService {
         requireVacancyOwner(application.getVacancy());
         application.changeStatus(request.getStatus());
 
-        return jobApplicationMapper.toCandidateDto(jobApplicationRepository.save(application));
+        JobApplication saved = jobApplicationRepository.save(application);
+        Integer esg = saved.getStudent().getEsgRating();
+        boolean recommended = esg != null && esg >= RECOMMENDED_ESG_THRESHOLD;
+
+        return jobApplicationMapper.toCandidateDto(saved, recommended);
     }
 
     private User requireStudent() {

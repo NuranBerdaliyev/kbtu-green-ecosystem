@@ -1,5 +1,6 @@
 package com.example.green.service;
 
+import com.example.green.api.dto.request.CompanyPartnerStatusRequestDto;
 import com.example.green.api.dto.request.CompanyRequestDto;
 import com.example.green.api.dto.response.CompanyResponseDto;
 import com.example.green.api.error.ForbiddenException;
@@ -83,6 +84,28 @@ public class CompanyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found: id=" + id));
     }
 
+    @Transactional
+    public CompanyResponseDto changePartnerStatus(Long companyId, CompanyPartnerStatusRequestDto request) {
+        requireAdmin();
+        Company company = getCompanyOrThrow(companyId);
+        company.setIsPartner(request.getIsPartner());
+
+        return companyMapper.toDto(
+                companyRepository.save(company)
+        );
+    }
+
+    private User requireAdmin() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException(
+                    "Only administrators can change company partner status"
+            );
+        }
+
+        return user;
+    }
     private User requireHr() {
         User user = currentUserService.getCurrentUserOrThrow();
         if (user.getRole() != Role.HR) {
