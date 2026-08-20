@@ -75,19 +75,54 @@ CREATE TABLE waste_logs (
     CONSTRAINT chk_waste_logs_eco_coins_non_negative CHECK (eco_coins_earned >= 0)
 );
 
+CREATE TABLE companies (
+    id BIGSERIAL PRIMARY KEY,
+    hr_manager_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    website VARCHAR(500),
+    is_partner BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_companies_hr_manager
+        FOREIGN KEY (hr_manager_id)
+            REFERENCES users(id),
+
+    CONSTRAINT uk_company_hr_name
+        UNIQUE (hr_manager_id, name),
+
+    CONSTRAINT chk_companies_name_not_blank
+        CHECK (btrim(name) <> '')
+);
+
+CREATE INDEX idx_companies_hr_manager
+    ON companies(hr_manager_id);
+
+
 CREATE TABLE vacancies (
     id BIGSERIAL PRIMARY KEY,
     hr_manager_id BIGINT NOT NULL,
-    company_name VARCHAR(255) NOT NULL,
+    company_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    is_partner_vacancy BOOLEAN NOT NULL,
 
-    CONSTRAINT fk_vacancies_hr_manager FOREIGN KEY (hr_manager_id) REFERENCES users(id),
-    CONSTRAINT chk_vacancies_company_not_blank CHECK (btrim(company_name) <> ''),
-    CONSTRAINT chk_vacancies_title_not_blank CHECK (btrim(title) <> ''),
-    CONSTRAINT chk_vacancies_description_not_blank CHECK (btrim(description) <> '')
+    CONSTRAINT fk_vacancies_hr_manager
+        FOREIGN KEY (hr_manager_id)
+            REFERENCES users(id),
+
+    CONSTRAINT fk_vacancies_company
+        FOREIGN KEY (company_id)
+            REFERENCES companies(id),
+
+    CONSTRAINT chk_vacancies_title_not_blank
+        CHECK (btrim(title) <> ''),
+
+    CONSTRAINT chk_vacancies_description_not_blank
+        CHECK (btrim(description) <> '')
 );
+
+CREATE INDEX idx_vacancies_company
+    ON vacancies(company_id);
+
 
 CREATE TABLE job_applications (
     id BIGSERIAL PRIMARY KEY,
@@ -97,13 +132,31 @@ CREATE TABLE job_applications (
     cover_letter TEXT NOT NULL,
     job_status VARCHAR(20) NOT NULL,
 
-    CONSTRAINT fk_job_applications_vacancy FOREIGN KEY (vacancy_id) REFERENCES vacancies(id),
-    CONSTRAINT fk_job_applications_student FOREIGN KEY (student_id) REFERENCES users(id),
-    CONSTRAINT uk_job_application_vacancy_student UNIQUE (vacancy_id, student_id),
-    CONSTRAINT chk_job_applications_cover_letter_len CHECK (char_length(cover_letter) BETWEEN 10 AND 5000),
-    CONSTRAINT chk_job_applications_status_values CHECK (job_status IN ('PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED'))
+    CONSTRAINT fk_job_applications_vacancy
+        FOREIGN KEY (vacancy_id)
+            REFERENCES vacancies(id),
+
+    CONSTRAINT fk_job_applications_student
+        FOREIGN KEY (student_id)
+            REFERENCES users(id),
+
+    CONSTRAINT uk_job_application_vacancy_student
+        UNIQUE (vacancy_id, student_id),
+
+    CONSTRAINT chk_job_applications_cover_letter_len
+        CHECK (char_length(cover_letter) BETWEEN 10 AND 5000),
+
+    CONSTRAINT chk_job_applications_status_values
+        CHECK (
+            job_status IN (
+                'PENDING',
+                'REVIEWED',
+                'ACCEPTED',
+                'REJECTED'
+            )
+        )
 );
 
-CREATE INDEX idx_trips_status_time ON trips (trip_status, departure_time);
-CREATE INDEX idx_container_waste_type ON eco_point_containers (waste_type);
-CREATE INDEX idx_job_app_status ON job_applications (job_status);
+CREATE INDEX idx_job_app_status ON job_applications(job_status);
+CREATE INDEX idx_job_app_student ON job_applications(student_id);
+CREATE INDEX idx_job_app_vacancy ON job_applications(vacancy_id);
