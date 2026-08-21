@@ -33,6 +33,9 @@ class JobApplicationServiceTest {
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock
+    private GamificationService gamificationService;
+
     @Spy
     private JobApplicationMapper jobApplicationMapper =
             new JobApplicationMapper();
@@ -58,6 +61,12 @@ class JobApplicationServiceTest {
 
         JobApplication regular =
                 application(101L, vacancy, regularStudent);
+
+        when(gamificationService.isRecommended(strongStudent))
+                .thenReturn(true);
+
+        when(gamificationService.isRecommended(regularStudent))
+                .thenReturn(false);
 
         when(currentUserService.getCurrentUserOrThrow())
                 .thenReturn(hr);

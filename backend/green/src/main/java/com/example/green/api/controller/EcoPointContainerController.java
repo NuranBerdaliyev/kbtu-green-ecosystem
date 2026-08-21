@@ -16,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/eco-point-containers")
 @RequiredArgsConstructor
 @Validated
-public class EcoPointController {
+public class EcoPointContainerController {
     private final EcoPointContainerService ecoPointContainerService;
 
     @GetMapping

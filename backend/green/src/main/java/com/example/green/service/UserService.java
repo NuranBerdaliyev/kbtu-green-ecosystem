@@ -8,46 +8,57 @@ import com.example.green.domain.entity.User;
 import com.example.green.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
 
+    @Transactional(readOnly = true)
     public List<UserResponseDto> findAll() {
-        return userRepository.findAll().stream()
+        return userRepository.findAll()
+                .stream()
                 .map(userMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public UserResponseDto findById(Long id) {
-        return userMapper.toDto(getUserOrThrow(id));
+        return userMapper.toDto(
+                getUserOrThrow(id)
+        );
     }
 
-    public UserResponseDto create(UserRequestDto request) {
-        User saved = userRepository.save(userMapper.toEntity(request));
-        return userMapper.toDto(saved);
+    @Transactional
+    public UserResponseDto update(
+            Long id,
+            UserRequestDto request
+    ) {
+        User user = getUserOrThrow(id);
+        userMapper.updateEntity(user, request);
+
+        return userMapper.toDto(
+                userRepository.save(user)
+        );
     }
 
-    public UserResponseDto update(Long id, UserRequestDto request) {
-        User entity = getUserOrThrow(id);
-        userMapper.updateEntity(entity, request);
-        User saved = userRepository.save(entity);
-        return userMapper.toDto(saved);
-    }
-
+    @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found: id=" + id);
-        }
-        userRepository.deleteById(id);
+        User user = getUserOrThrow(id);
+        userRepository.delete(user);
     }
 
     private User getUserOrThrow(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found: id=" + id
+                        )
+                );
     }
 }

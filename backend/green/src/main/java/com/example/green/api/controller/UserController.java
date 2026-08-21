@@ -29,12 +29,6 @@ public class UserController {
         return userService.findById(id);
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDto create(@RequestBody @Valid UserRequestDto request) {
-        return userService.create(request);
-    }
-
     @PutMapping("/{id}")
     public UserResponseDto update(@PathVariable @Positive Long id,
                                   @RequestBody @Valid UserRequestDto request) {

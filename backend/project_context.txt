@@ -484,7 +484,46 @@ public class CompanyController {
 }
 
 ========================================
-File: ./green/src/main/java/com/example/green/api/controller/EcoPointController.java
+File: ./green/src/main/java/com/example/green/api/controller/EcoPointContainerActionController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.WasteDepositRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.service.EcoPointsContainerActionService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/eco-points")
+@RequiredArgsConstructor
+@Validated
+public class EcoPointContainerActionController {
+    private final EcoPointsContainerActionService actionService;
+
+    // 获取所有激活状态的回收箱列表及实时满溢度
+    @GetMapping
+    public List<EcoPointContainerResponseDto> getActiveContainers() {
+        return actionService.getActiveContainers();
+    }
+
+    // 接收 qrCodeToken 与投递参数进行积分计算并更新数据
+    @PostMapping("/deposit")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WasteLogResponseDto deposit(@Valid @RequestBody WasteDepositRequestDto request) {
+        return actionService.processDeposit(request);
+    }
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/controller/EcoPointContainerController.java
 ========================================
 
 package com.example.green.api.controller;
@@ -505,7 +544,7 @@ import java.util.List;
 @RequestMapping("/api/eco-point-containers")
 @RequiredArgsConstructor
 @Validated
-public class EcoPointController {
+public class EcoPointContainerController {
     private final EcoPointContainerService ecoPointContainerService;
 
     @GetMapping
@@ -539,44 +578,57 @@ public class EcoPointController {
 
 
 ========================================
-File: ./green/src/main/java/com/example/green/api/controller/EcoPointsActionController.java
+File: ./green/src/main/java/com/example/green/api/controller/GamificationController.java
 ========================================
 
 package com.example.green.api.controller;
 
-import com.example.green.api.dto.request.WasteDepositRequestDto;
-import com.example.green.api.dto.response.EcoPointContainerResponseDto;
-import com.example.green.api.dto.response.WasteLogResponseDto;
-import com.example.green.service.EcoPointsActionService;
-import jakarta.validation.Valid;
+import com.example.green.api.dto.response.*;
+import com.example.green.service.GamificationService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/eco-points")
+@RequestMapping("/api/gamification")
 @RequiredArgsConstructor
 @Validated
-public class EcoPointsActionController {
-    private final EcoPointsActionService actionService;
+public class GamificationController {
 
-    // 获取所有激活状态的回收箱列表及实时满溢度
-    @GetMapping
-    public List<EcoPointContainerResponseDto> getActiveContainers() {
-        return actionService.getActiveContainers();
+    private final GamificationService gamificationService;
+
+    @GetMapping("/me")
+    public GamificationProfileResponseDto myProfile() {
+        return gamificationService.getMyProfile();
     }
 
-    // 接收 qrCodeToken 与投递参数进行积分计算并更新数据
-    @PostMapping("/deposit")
-    @ResponseStatus(HttpStatus.CREATED)
-    public WasteLogResponseDto deposit(@Valid @RequestBody WasteDepositRequestDto request) {
-        // JwtAuthenticationFilter 在拦截时已经将解析得到的 userId 作为 Principal 存入上下文
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return actionService.processDeposit(userId, request);
+    @GetMapping("/me/history")
+    public Page<EcoTransactionResponseDto> myHistory(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        return gamificationService.getMyHistory(page, size);
+    }
+
+    @GetMapping("/me/achievements")
+    public List<AchievementResponseDto> myAchievements() {
+        return gamificationService.getMyAchievements();
+    }
+
+    @GetMapping("/leaderboard")
+    public Page<LeaderboardEntryResponseDto> leaderboard(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        return gamificationService.getLeaderboard(
+                page,
+                size
+        );
     }
 }
 
@@ -836,12 +888,6 @@ public class UserController {
     @GetMapping("/{id}")
     public UserResponseDto findById(@PathVariable @Positive Long id) {
         return userService.findById(id);
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDto create(@RequestBody @Valid UserRequestDto request) {
-        return userService.create(request);
     }
 
     @PutMapping("/{id}")
@@ -1285,11 +1331,13 @@ import com.example.green.domain.enums.Role;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserRequestDto {
+
     @NotBlank
     @Email
     @Size(max = 255)
@@ -1301,25 +1349,7 @@ public class UserRequestDto {
 
     @NotNull
     private Role role;
-
-    @NotNull
-    @Min(0)
-    private Long ecoCoinsBalance;
-
-    @NotNull
-    @Min(0)
-    @Max(100)
-    private Integer esgRating;
-
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = true)
-    @Digits(integer = 12, fraction = 3)
-    private BigDecimal totalCo2Saved;
-
-    @NotNull
-    private LocalDateTime createdAt;
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/VacancyRequestDto.java
@@ -1426,6 +1456,27 @@ public class WasteLogRequestDto {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/AchievementResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.AchievementCode;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class AchievementResponseDto {
+
+    private AchievementCode code;
+    private String title;
+    private String description;
+    private Boolean unlocked;
+    private LocalDateTime unlockedAt;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/AuthResponseDto.java
 ========================================
 
@@ -1521,6 +1572,48 @@ public class EcoPointContainerResponseDto {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/EcoTransactionResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.EcoTransactionSource;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class EcoTransactionResponseDto {
+    private Long id;
+    private EcoTransactionSource source;
+    private Long referenceId;
+    private Long ecoCoinsDelta;
+    private Integer esgRatingDelta;
+    private BigDecimal co2SavedDelta;
+    private LocalDateTime createdAt;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/GamificationProfileResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+import lombok.*;
+import java.math.BigDecimal;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class GamificationProfileResponseDto {
+    private Long userId;
+    private String fullName;
+    private Long ecoCoinsBalance;
+    private Integer esgRating;
+    private BigDecimal totalCo2Saved;
+    private Long leaderboardRank;
+    private Long unlockedAchievements;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/JobApplicationResponseDto.java
 ========================================
 
@@ -1541,6 +1634,26 @@ public class JobApplicationResponseDto {
     private LocalDateTime appliedAt;
     private String coverLetter;
     private JobStatus jobStatus;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/LeaderboardEntryResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+import java.math.BigDecimal;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class LeaderboardEntryResponseDto {
+    private Long rank;
+    private Long userId;
+    private String fullName;
+    private Integer esgRating;
+    private Long ecoCoinsBalance;
+    private BigDecimal totalCo2Saved;
 }
 
 ========================================
@@ -2080,6 +2193,72 @@ public class EcoPointContainerMapper {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/mapper/GamificationMapper.java
+========================================
+
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.response.*;
+import com.example.green.domain.entity.EcoTransaction;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.UserAchievement;
+import com.example.green.domain.enums.AchievementCode;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GamificationMapper {
+
+    public EcoTransactionResponseDto toEcoTransactionDto(EcoTransaction transaction) {
+        return EcoTransactionResponseDto.builder()
+                .id(transaction.getId())
+                .source(transaction.getSource())
+                .referenceId(transaction.getReferenceId())
+                .ecoCoinsDelta(transaction.getEcoCoinsDelta())
+                .esgRatingDelta(transaction.getEsgRatingDelta())
+                .co2SavedDelta(transaction.getCo2SavedDelta())
+                .createdAt(transaction.getCreatedAt())
+                .build();
+    }
+
+    public AchievementResponseDto toAchievementDto(AchievementCode code, UserAchievement unlockedAchievement) {
+        boolean unlocked = unlockedAchievement != null;
+
+        return AchievementResponseDto.builder()
+                .code(code)
+                .title(code.getTitle())
+                .description(code.getDescription())
+                .unlocked(unlocked)
+                .unlockedAt(
+                        unlocked ? unlockedAchievement.getUnlockedAt() : null
+                )
+                .build();
+    }
+
+    public LeaderboardEntryResponseDto toLeaderboardDto(User user, long rank) {
+        return LeaderboardEntryResponseDto.builder()
+                .rank(rank)
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .esgRating(user.getEsgRating())
+                .ecoCoinsBalance(user.getEcoCoinsBalance())
+                .totalCo2Saved(user.getTotalCo2Saved())
+                .build();
+    }
+
+    public GamificationProfileResponseDto toGamificationProfileDto(User user, Long rank, long achievementCount) {
+        return GamificationProfileResponseDto.builder()
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .ecoCoinsBalance(user.getEcoCoinsBalance())
+                .esgRating(user.getEsgRating())
+                .totalCo2Saved(user.getTotalCo2Saved())
+                .leaderboardRank(rank)
+                .unlockedAchievements(achievementCount)
+                .build();
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/mapper/GeometryMapper.java
 ========================================
 
@@ -2342,26 +2521,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper {
-    public User toEntity(UserRequestDto dto) {
-        return User.builder()
-                .email(dto.getEmail())
-                .fullName(dto.getFullName())
-                .role(dto.getRole())
-                .ecoCoinsBalance(dto.getEcoCoinsBalance())
-                .esgRating(dto.getEsgRating())
-                .totalCo2Saved(dto.getTotalCo2Saved())
-                .createdAt(dto.getCreatedAt())
-                .build();
-    }
 
-    public void updateEntity(User entity, UserRequestDto dto) {
+    public void updateEntity(
+            User entity,
+            UserRequestDto dto
+    ) {
         entity.setEmail(dto.getEmail());
         entity.setFullName(dto.getFullName());
         entity.setRole(dto.getRole());
-        entity.setEcoCoinsBalance(dto.getEcoCoinsBalance());
-        entity.setEsgRating(dto.getEsgRating());
-        entity.setTotalCo2Saved(dto.getTotalCo2Saved());
-        entity.setCreatedAt(dto.getCreatedAt());
     }
 
     public UserResponseDto toDto(User entity) {
@@ -2377,7 +2544,6 @@ public class UserMapper {
                 .build();
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/VacancyMapper.java
@@ -2500,6 +2666,99 @@ public class AuthProperties {
     @Min(value = 1, message = "app.auth.refresh-ttl-seconds must be > 0")
     private long refreshTtlSeconds; //refresh token's existence time for updating access token (for security)
     //If malicious catch access token, token can help him only for accessTtlSeconds time
+}
+
+
+========================================
+File: ./green/src/main/java/com/example/green/config/GamificationProperties.java
+========================================
+
+package com.example.green.config;
+
+import com.example.green.domain.enums.WasteType;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+@Validated
+@ConfigurationProperties(prefix = "app.gamification")
+public class GamificationProperties {
+    @Valid
+    @NotNull
+    private Trip trip = new Trip();
+
+    @Valid
+    @NotNull
+    private Waste waste = new Waste();
+
+    @Min(0)
+    @Max(100)
+    private int recommendedEsgThreshold = 70;
+    @Getter
+    @Setter
+    public static class Trip {
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal coinsPerKm = BigDecimal.valueOf(2);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal co2KgPerPassengerKm =
+                BigDecimal.valueOf(0.12);
+
+        @Min(1)
+        private int esgPerCompletedTrip = 2;
+    }
+
+    @Getter
+    @Setter
+    public static class Waste {
+
+        @Min(1)
+        private int gramsPerCoin = 100;
+
+        @Min(1)
+        private int esgPerDeposit = 1;
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal plasticCo2KgPerKg =
+                BigDecimal.valueOf(1.5);
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal paperCo2KgPerKg =
+                BigDecimal.valueOf(0.9);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal glassCo2KgPerKg =
+                BigDecimal.valueOf(0.3);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal batteryCo2KgPerKg =
+                BigDecimal.valueOf(2.0);
+
+        public BigDecimal co2Coefficient(WasteType wasteType) {
+            return switch (wasteType) {
+                case PLASTIC -> plasticCo2KgPerKg;
+                case PAPER -> paperCo2KgPerKg;
+                case GLASS -> glassCo2KgPerKg;
+                case BATTERY -> batteryCo2KgPerKg;
+            };
+        }
+    }
 }
 
 
@@ -2772,6 +3031,10 @@ public class EcoTransaction {
     @NotNull
     @Column(name = "eco_coins_delta", nullable = false)
     private Long ecoCoinsDelta;
+
+    @NotNull
+    @Column(name = "esg_rating_delta", nullable = false)
+    private Integer esgRatingDelta;
 
     @Column(name = "co2_saved_delta", precision = 15, scale = 3)
     private BigDecimal co2SavedDelta;
@@ -3140,6 +3403,52 @@ public class User {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/entity/UserAchievement.java
+========================================
+
+package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.AchievementCode;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "user_achievements",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_user_achievement",
+                        columnNames = {
+                                "user_id",
+                                "achievement_code"
+                        }
+                )
+        }
+)
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class UserAchievement {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "achievement_code", nullable = false, length = 50)
+    private AchievementCode code;
+
+    @NotNull
+    @Column(name = "unlocked_at", nullable = false)
+    private LocalDateTime unlockedAt;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/entity/Vacancy.java
 ========================================
 
@@ -3224,6 +3533,73 @@ public class WasteLog {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/enums/AchievementCode.java
+========================================
+
+package com.example.green.domain.enums;
+
+public enum AchievementCode {
+    FIRST_ACTION(
+            "Первый шаг",
+            "Совершено первое экологическое действие"
+    ),
+
+    FIRST_SHARED_TRIP(
+            "Первая совместная поездка",
+            "Завершена первая совместная поездка"
+    ),
+
+    CARPOOL_REGULAR(
+            "Постоянный попутчик",
+            "Завершено 10 совместных поездок"
+    ),
+
+    FIRST_WASTE_DEPOSIT(
+            "Начало переработки",
+            "Совершена первая сдача отходов"
+    ),
+
+    RECYCLING_REGULAR(
+            "Ответственный переработчик",
+            "Совершено 10 сдач отходов"
+    ),
+
+    ECOCOINS_100(
+            "Первые 100 EcoCoins",
+            "Накоплено не менее 100 EcoCoins"
+    ),
+
+    ESG_70(
+            "ESG-лидер",
+            "Достигнут ESG-рейтинг 70"
+    ),
+
+    CO2_10_KG(
+            "Защитник климата",
+            "Предотвращено не менее 10 кг CO₂"
+    );
+
+    private final String title;
+    private final String description;
+
+    AchievementCode(String title, String description) {
+        this.title = title;
+        this.description = description;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+
+}
+
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/enums/CandidateSort.java
 ========================================
 
@@ -3301,6 +3677,29 @@ public enum WasteType {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/model/RewardResult.java
+========================================
+
+package com.example.green.domain.model;
+
+import com.example.green.domain.enums.AchievementCode;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public record RewardResult(
+        long ecoCoinsEarned,
+        int esgRatingEarned,
+        BigDecimal co2Saved,
+        boolean applied,
+        List<AchievementCode> newAchievements
+) {
+    public RewardResult {
+        newAchievements = List.copyOf(newAchievements);
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/repository/AuthenticationRepository.java
 ========================================
 
@@ -3361,11 +3760,19 @@ File: ./green/src/main/java/com/example/green/domain/repository/EcoTransactionRe
 package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.EcoTransaction;
+import com.example.green.domain.enums.EcoTransactionSource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
+
 public interface EcoTransactionRepository extends JpaRepository<EcoTransaction, Long>{
-    List<EcoTransaction> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<EcoTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Optional<EcoTransaction> findByUserIdAndSourceAndReferenceId(Long userId, EcoTransactionSource source, Long referenceId);
+    long countByUserId(Long userId);
+    long countByUserIdAndSource(Long userId, EcoTransactionSource source);
 }
 
 ========================================
@@ -3447,16 +3854,81 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/repository/UserAchievementRepository.java
+========================================
+
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.UserAchievement;
+import com.example.green.domain.enums.AchievementCode;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface UserAchievementRepository extends JpaRepository<UserAchievement, Long> {
+    List<UserAchievement> findByUserIdOrderByUnlockedAtAsc(Long userId);
+    boolean existsByUserIdAndCode(Long userId, AchievementCode code);
+    long countByUserId(Long userId);
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/repository/UserRepository.java
 ========================================
 
 package com.example.green.domain.repository;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByEmail(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") Long id);
+
+    Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select count(u) + 1
+            from User u
+            where u.role in :roles
+              and (
+                   u.esgRating > :esg
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance > :coins
+                   )
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance = :coins
+                       and u.totalCo2Saved > :co2
+                   )
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance = :coins
+                       and u.totalCo2Saved = :co2
+                       and u.id < :userId
+                   )
+              )
+            """)
+    long calculateRank(
+            @Param("roles") Collection<Role> roles,
+            @Param("userId") Long userId,
+            @Param("esg") Integer esg,
+            @Param("coins") Long coins,
+            @Param("co2") BigDecimal co2
+    );
 }
 
 
@@ -3500,11 +3972,12 @@ File: ./green/src/main/java/com/example/green/GreenApplication.java
 package com.example.green;
 
 import com.example.green.config.AuthProperties;
+import com.example.green.config.GamificationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-@EnableConfigurationProperties(AuthProperties.class) //Enable Auth properties class for jwt parameters
+@EnableConfigurationProperties({AuthProperties.class, GamificationProperties.class}) //Enable Auth properties class for jwt parameters
 @SpringBootApplication//here Spring starts to run
 public class GreenApplication {
     public static void main(String[] args) {
@@ -3929,7 +4402,7 @@ public class EcoPointContainerService {
 
 
 ========================================
-File: ./green/src/main/java/com/example/green/service/EcoPointsActionService.java
+File: ./green/src/main/java/com/example/green/service/EcoPointsContainerActionService.java
 ========================================
 
 package com.example.green.service;
@@ -3940,12 +4413,9 @@ import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.api.mapper.WasteLogMapper;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.entity.WasteLog;
-import com.example.green.domain.repository.EcoPointContainerRepository;
-import com.example.green.domain.repository.UserRepository;
-import com.example.green.domain.repository.WasteLogRepository;
+import com.example.green.domain.entity.*;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -3956,114 +4426,94 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class EcoPointsActionService {
-    private final EcoPointContainerRepository containerRepo;
-    private final WasteLogRepository wasteLogRepo;
-    private final UserRepository userRepository;
+public class EcoPointsContainerActionService {
+
+    private final EcoPointContainerRepository containerRepository;
+    private final WasteLogRepository wasteLogRepository;
+    private final CurrentUserService currentUserService;
     private final GamificationService gamificationService;
-    private final SimpMessagingTemplate messagingTemplate; // WebSocket 推送模版
+    private final SimpMessagingTemplate messagingTemplate;
     private final EcoPointContainerMapper containerMapper;
     private final WasteLogMapper wasteLogMapper;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> getActiveContainers() {
-        return containerRepo.findByIsActiveTrue()
+        return containerRepository
+                .findByIsActiveTrue()
                 .stream()
                 .map(containerMapper::toDto)
                 .toList();
     }
 
     @Transactional
-    public WasteLogResponseDto processDeposit(Long userId, WasteDepositRequestDto request) {
-        // 1. 校验二维码与激活状态
-        EcoPointContainer container = containerRepo.findByQrCodeToken(request.getQrCodeToken())
-                .orElseThrow(() -> new ResourceNotFoundException("Неверный QR-код или контейнер не найден"));
+    public WasteLogResponseDto processDeposit(WasteDepositRequestDto request) {
+        User user = currentUserService.getCurrentUserOrThrow();
 
-        if (!container.getIsActive()) {
-            throw new IllegalStateException("Контейнер не активен");
+        EcoPointContainer container = containerRepository
+                        .findByQrCodeToken(
+                                request.getQrCodeToken()
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Invalid QR code or container not found")
+                        );
+
+        if (!Boolean.TRUE.equals(container.getIsActive())) {
+            throw new IllegalStateException("Container is not active");
         }
 
-        // 2. 更新满溢度
-        int newFullness = container.getFullnessPercentage() + request.getAddedFullnessPercentage();
-        if (newFullness > 100) newFullness = 100;
+        int newFullness = Math.min(
+                100,
+                container.getFullnessPercentage()
+                        + request.getAddedFullnessPercentage()
+        );
+
         container.setFullnessPercentage(newFullness);
-        containerRepo.save(container);
+        containerRepository.save(container);
 
-        // 3. WebSocket 实时广播
-        EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
-        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
-
-        // 若满溢度超 90%，发送管理员阈值预警
-        if (newFullness >= 90) {
-            messagingTemplate.convertAndSend("/topic/admin/alerts",
-                    "Внимание! Контейнер ID " + container.getId() + " заполнен на " + newFullness + "%!");
-        }
-
-        // 4. 计算奖励并发放积分与 ESG
-        int earnedCoins = gamificationService.processDepositRewards(userId, container.getId(), request.getWasteWeightGrams());
-
-        // 5. 记录投递日志
-        User user = userRepository.getReferenceById(userId);
+        /*
+         * Сначала создаём WasteLog, чтобы получить уникальный
+         * id конкретной сдачи отходов.
+         */
         WasteLog log = WasteLog.builder()
                 .user(user)
                 .ecoPointContainer(container)
                 .scannedAt(LocalDateTime.now())
-                .ecoCoinsEarned(earnedCoins)
+                .ecoCoinsEarned(0)
                 .build();
-        wasteLogRepo.save(log);
 
-        return wasteLogMapper.toDto(log);
-    }
-}
+        log = wasteLogRepository.save(log);
 
-========================================
-File: ./green/src/main/java/com/example/green/service/EcoRewardService.java
-========================================
+        RewardResult reward =
+                gamificationService.rewardForWasteDeposit(
+                        user.getId(),
+                        log.getId(),
+                        request.getWasteWeightGrams(),
+                        container.getWasteType()
+                );
 
-package com.example.green.service;
+        log.setEcoCoinsEarned(
+                Math.toIntExact(reward.ecoCoinsEarned())
+        );
 
-import com.example.green.domain.entity.EcoTransaction;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.enums.EcoTransactionSource;
-import com.example.green.domain.repository.EcoTransactionRepository;
-import com.example.green.domain.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+        WasteLog savedLog = wasteLogRepository.save(log);
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
+        EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
 
-@Service
-@RequiredArgsConstructor
-public class EcoRewardService {
+        messagingTemplate.convertAndSend(
+                "/topic/eco-containers",
+                containerDto
+        );
 
-    private static final BigDecimal CO2_KG_PER_KM = BigDecimal.valueOf(0.12); // экономия на 1 пассажира на 1 км
-    private static final long COINS_PER_KM = 2;
+        if (newFullness >= 90) {
+            messagingTemplate.convertAndSend(
+                    "/topic/admin/alerts",
+                    "Container ID " + container.getId()
+                            + " is " + newFullness
+                            + "% full"
+            );
+        }
 
-    private final UserRepository userRepository;
-    private final EcoTransactionRepository ecoTransactionRepository;
-
-    public void rewardForTripDistance(User user, double distanceKm, Long tripId) {
-        if (distanceKm <= 0) return;
-
-        BigDecimal co2Saved = CO2_KG_PER_KM
-                .multiply(BigDecimal.valueOf(distanceKm))
-                .setScale(3, RoundingMode.HALF_UP);
-        long coins = Math.round(distanceKm * COINS_PER_KM);
-
-        user.setEcoCoinsBalance(user.getEcoCoinsBalance() + coins);
-        user.setTotalCo2Saved(user.getTotalCo2Saved().add(co2Saved));
-        userRepository.save(user);
-
-        ecoTransactionRepository.save(EcoTransaction.builder()
-                .user(user)
-                .source(EcoTransactionSource.TRIP_COMPLETED)
-                .referenceId(tripId)
-                .ecoCoinsDelta(coins)
-                .co2SavedDelta(co2Saved)
-                .createdAt(LocalDateTime.now())
-                .build());
+        return wasteLogMapper.toDto(savedLog);
     }
 }
 
@@ -4073,53 +4523,353 @@ File: ./green/src/main/java/com/example/green/service/GamificationService.java
 
 package com.example.green.service;
 
+import com.example.green.api.dto.response.*;
 import com.example.green.api.error.ResourceNotFoundException;
-import com.example.green.domain.entity.EcoTransaction;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.enums.EcoTransactionSource;
-import com.example.green.domain.repository.EcoTransactionRepository;
-import com.example.green.domain.repository.UserRepository;
+import com.example.green.api.mapper.GamificationMapper;
+import com.example.green.config.GamificationProperties;
+import com.example.green.domain.entity.*;
+import com.example.green.domain.enums.*;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class GamificationService {
+    private static final List<Role> RANKED_ROLES = List.of(Role.STUDENT, Role.EMPLOYEE);
     private final UserRepository userRepository;
     private final EcoTransactionRepository ecoTransactionRepository;
+    private final UserAchievementRepository userAchievementRepository;
+    private final CurrentUserService currentUserService;
+    private final GamificationMapper gamificationMapper;
+    private final GamificationProperties properties;
 
     @Transactional
-    public int processDepositRewards(Long userId, Long containerId, Integer wasteWeightGrams) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+    public RewardResult rewardForCompletedTrip(Long userId, Long tripId, double distanceKm) {
+        if (distanceKm <= 0) {
+            throw new IllegalArgumentException("Trip distance must be greater than zero");
+        }
 
-        // 积分与ESG计算规则 (示例：每100g = 1 EcoCoin, 每次成功投递 +1 ESG)
-        int ecoCoinsEarned = Math.max(1, wasteWeightGrams / 100);
-        int esgIncrease = 1;
-        BigDecimal co2Saved = BigDecimal.valueOf(wasteWeightGrams * 0.005); // 碳减排计算系数
+        BigDecimal distance = BigDecimal.valueOf(distanceKm);
+        long coins = distance
+                .multiply(properties.getTrip().getCoinsPerKm())
+                .setScale(0, RoundingMode.HALF_UP)
+                .max(BigDecimal.ONE)
+                .longValueExact();
 
-        // 更新用户信息
-        user.setEcoCoinsBalance(user.getEcoCoinsBalance() + ecoCoinsEarned);
-        user.setEsgRating(Math.min(100, user.getEsgRating() + esgIncrease)); // ESG 封顶100
-        user.setTotalCo2Saved(user.getTotalCo2Saved().add(co2Saved));
+        BigDecimal co2Saved = distance.multiply(properties.getTrip().getCo2KgPerPassengerKm()).setScale(3, RoundingMode.HALF_UP);
+        return applyReward(
+                userId,
+                EcoTransactionSource.TRIP_COMPLETED,
+                tripId,
+                coins,
+                properties.getTrip().getEsgPerCompletedTrip(),
+                co2Saved
+        );
+    }
+
+    @Transactional
+    public RewardResult rewardForWasteDeposit(Long userId, Long wasteLogId, int wasteWeightGrams, WasteType wasteType) {
+        if (wasteWeightGrams <= 0) {
+            throw new IllegalArgumentException("Waste weight must be greater than zero");
+        }
+        int gramsPerCoin = properties.getWaste().getGramsPerCoin();
+        long coins = Math.max(1, wasteWeightGrams / gramsPerCoin);
+        BigDecimal weightKg = BigDecimal.valueOf(wasteWeightGrams)
+                .divide(BigDecimal.valueOf(1000), 6, RoundingMode.HALF_UP);
+        BigDecimal co2Saved = weightKg
+                .multiply(properties.getWaste().co2Coefficient(wasteType))
+                .setScale(3, RoundingMode.HALF_UP);
+
+        return applyReward(
+                userId,
+                EcoTransactionSource.WASTE_DEPOSIT,
+                wasteLogId,
+                coins,
+                properties.getWaste().getEsgPerDeposit(),
+                co2Saved
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isRecommended(User user) {
+        return user.getEsgRating() != null
+                && user.getEsgRating()
+                >= properties.getRecommendedEsgThreshold();
+    }
+
+    @Transactional(readOnly = true)
+    public GamificationProfileResponseDto getMyProfile() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        Long rank = isRankedRole(user.getRole()) ? calculateRank(user) : null;
+        long achievementCount = userAchievementRepository.countByUserId(user.getId());
+        return gamificationMapper.toGamificationProfileDto(user, rank, achievementCount);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EcoTransactionResponseDto> getMyHistory(int page, int size) {
+        User user = currentUserService.getCurrentUserOrThrow();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return ecoTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable)
+                .map(gamificationMapper::toEcoTransactionDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AchievementResponseDto> getMyAchievements() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        Map<AchievementCode, UserAchievement> unlocked = userAchievementRepository
+                        .findByUserIdOrderByUnlockedAtAsc(user.getId())
+                        .stream()
+                        .collect(Collectors.toMap(UserAchievement::getCode, Function.identity()));
+
+        return Arrays.stream(AchievementCode.values())
+                .map(code -> gamificationMapper.toAchievementDto(code, unlocked.get(code)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LeaderboardEntryResponseDto> getLeaderboard(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(
+                        Sort.Order.desc("esgRating"), Sort.Order.desc("ecoCoinsBalance"),
+                        Sort.Order.desc("totalCo2Saved"), Sort.Order.asc("id")
+                )
+        );
+
+        Page<User> users = userRepository.findByRoleIn(RANKED_ROLES, pageable);
+        long firstRank = pageable.getOffset() + 1;
+        List<LeaderboardEntryResponseDto> content = IntStream.range(0, users.getContent().size())
+                .mapToObj(index ->
+                                gamificationMapper.toLeaderboardDto(
+                                        users.getContent().get(index),
+                                        firstRank + index
+                                )
+                        )
+                        .toList();
+
+        return new PageImpl<>(content, pageable, users.getTotalElements());
+    }
+
+    private RewardResult applyReward(
+            Long userId,
+            EcoTransactionSource source,
+            Long referenceId,
+            long ecoCoinsDelta,
+            int requestedEsgDelta,
+            BigDecimal co2Delta
+    ) {
+        if (referenceId == null || referenceId <= 0) {
+            throw new IllegalArgumentException("Reward referenceId must be positive");
+        }
+
+        User user = userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+
+        Optional<EcoTransaction> existing =
+                ecoTransactionRepository
+                        .findByUserIdAndSourceAndReferenceId(
+                                userId,
+                                source,
+                                referenceId
+                        );
+
+        if (existing.isPresent()) {
+            EcoTransaction transaction = existing.get();
+
+            return new RewardResult(
+                    transaction.getEcoCoinsDelta(),
+                    transaction.getEsgRatingDelta(),
+                    zeroIfNull(transaction.getCo2SavedDelta()),
+                    false,
+                    List.of()
+            );
+        }
+
+        long newBalance = Math.addExact(user.getEcoCoinsBalance(), ecoCoinsDelta);
+
+        int oldEsg = user.getEsgRating();
+        int newEsg = Math.min(100, oldEsg + requestedEsgDelta);
+        int actualEsgDelta = newEsg - oldEsg;
+
+        BigDecimal normalizedCo2 = zeroIfNull(co2Delta)
+                        .setScale(
+                                3,
+                                RoundingMode.HALF_UP
+                        );
+
+        user.setEcoCoinsBalance(newBalance);
+        user.setEsgRating(newEsg);
+        user.setTotalCo2Saved(
+                user.getTotalCo2Saved()
+                        .add(normalizedCo2)
+        );
+
         userRepository.save(user);
 
-        // 写入交易记录
-        EcoTransaction tx = EcoTransaction.builder()
-                .user(user)
-                .source(EcoTransactionSource.WASTE_DEPOSIT)
-                .referenceId(containerId)
-                .ecoCoinsDelta((long) ecoCoinsEarned)
-                .co2SavedDelta(co2Saved)
-                .createdAt(LocalDateTime.now())
-                .build();
-        ecoTransactionRepository.save(tx);
+        EcoTransaction transaction =
+                EcoTransaction.builder()
+                        .user(user)
+                        .source(source)
+                        .referenceId(referenceId)
+                        .ecoCoinsDelta(ecoCoinsDelta)
+                        .esgRatingDelta(actualEsgDelta)
+                        .co2SavedDelta(normalizedCo2)
+                        .createdAt(LocalDateTime.now())
+                        .build();
 
-        return ecoCoinsEarned;
+        ecoTransactionRepository.saveAndFlush(transaction);
+
+        List<AchievementCode> unlocked = evaluateAchievements(user);
+
+        return new RewardResult(
+                ecoCoinsDelta,
+                actualEsgDelta,
+                normalizedCo2,
+                true,
+                unlocked
+        );
+    }
+
+    private List<AchievementCode> evaluateAchievements(User user) {
+        long totalActions = ecoTransactionRepository.countByUserId(user.getId());
+
+        long completedTrips = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.TRIP_COMPLETED);
+        long wasteDeposits = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.WASTE_DEPOSIT);
+
+        Set<AchievementCode> existingCodes =
+                userAchievementRepository
+                        .findByUserIdOrderByUnlockedAtAsc(
+                                user.getId()
+                        )
+                        .stream()
+                        .map(UserAchievement::getCode)
+                        .collect(Collectors.toSet());
+
+        List<UserAchievement> newEntities = new ArrayList<>();
+        unlockIfEligible(
+                totalActions >= 1,
+                AchievementCode.FIRST_ACTION,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                completedTrips >= 1,
+                AchievementCode.FIRST_SHARED_TRIP,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                completedTrips >= 10,
+                AchievementCode.CARPOOL_REGULAR,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                wasteDeposits >= 1,
+                AchievementCode.FIRST_WASTE_DEPOSIT,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                wasteDeposits >= 10,
+                AchievementCode.RECYCLING_REGULAR,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getEcoCoinsBalance() >= 100,
+                AchievementCode.ECOCOINS_100,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getEsgRating() >= 70,
+                AchievementCode.ESG_70,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getTotalCo2Saved()
+                        .compareTo(BigDecimal.TEN) >= 0,
+                AchievementCode.CO2_10_KG,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        userAchievementRepository.saveAll(newEntities);
+
+        return newEntities.stream()
+                .map(UserAchievement::getCode)
+                .toList();
+    }
+
+    private void unlockIfEligible(
+            boolean eligible,
+            AchievementCode code,
+            User user,
+            Set<AchievementCode> existingCodes,
+            List<UserAchievement> newEntities
+    ) {
+        if (!eligible || !existingCodes.add(code)) {
+            return;
+        }
+
+        newEntities.add(
+                UserAchievement.builder()
+                        .user(user)
+                        .code(code)
+                        .unlockedAt(LocalDateTime.now())
+                        .build()
+        );
+    }
+
+    private Long calculateRank(User user) {
+        return userRepository.calculateRank(
+                RANKED_ROLES,
+                user.getId(),
+                user.getEsgRating(),
+                user.getEcoCoinsBalance(),
+                user.getTotalCo2Saved()
+        );
+    }
+
+    private boolean isRankedRole(Role role) {
+        return RANKED_ROLES.contains(role);
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null
+                ? BigDecimal.ZERO
+                : value;
     }
 }
 
@@ -4156,7 +4906,7 @@ public class JobApplicationService {
     private final VacancyRepository vacancyRepository;
     private final JobApplicationMapper jobApplicationMapper;
     private final CurrentUserService currentUserService;
-    private static final int RECOMMENDED_ESG_THRESHOLD = 70;
+    private final GamificationService gamificationService;
 
     @Transactional
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
@@ -4205,8 +4955,9 @@ public class JobApplicationService {
                             .getEsgRating();
 
                     boolean recommended =
-                            esg != null
-                                    && esg >= RECOMMENDED_ESG_THRESHOLD;
+                            gamificationService.isRecommended(
+                                    application.getStudent()
+                            );
 
                     return jobApplicationMapper.toCandidateDto(
                             application,
@@ -4224,7 +4975,10 @@ public class JobApplicationService {
 
         JobApplication saved = jobApplicationRepository.save(application);
         Integer esg = saved.getStudent().getEsgRating();
-        boolean recommended = esg != null && esg >= RECOMMENDED_ESG_THRESHOLD;
+        boolean recommended =
+                gamificationService.isRecommended(
+                        saved.getStudent()
+                );
 
         return jobApplicationMapper.toCandidateDto(saved, recommended);
     }
@@ -4612,7 +5366,7 @@ public class TripService {
     private final TripMapper tripMapper;
     private final GeometryMapper geometryMapper;
     private final TripParticipantRepository tripParticipantRepository;
-    private final EcoRewardService ecoRewardService;
+    private final GamificationService gamificationService;
     private final CurrentUserService currentUserService;
 
     public List<TripResponseDto> findAllTrips() {
@@ -4745,15 +5499,30 @@ public class TripService {
                     "Trip cannot be completed before departure time"
             );
         }
+
         trip.changeStatus(TripStatus.COMPLETED);
         tripRepository.save(trip);
 
-        double distanceKm = GeoUtils.distanceKm(trip.getDepartureLocation(), trip.getDestinationLocation());
+        double distanceKm = GeoUtils.distanceKm(
+                trip.getDepartureLocation(),
+                trip.getDestinationLocation()
+        );
 
-        ecoRewardService.rewardForTripDistance(trip.getDriver(), distanceKm, trip.getId());
+        gamificationService.rewardForCompletedTrip(
+                trip.getDriver().getId(),
+                trip.getId(),
+                distanceKm
+        );
 
-        tripParticipantRepository.findByTripIdAndIsCancelledFalse(trip.getId())
-                .forEach(p -> ecoRewardService.rewardForTripDistance(p.getPassenger(), distanceKm, trip.getId()));
+        tripParticipantRepository
+                .findByTripIdAndIsCancelledFalse(trip.getId())
+                .forEach(participant ->
+                        gamificationService.rewardForCompletedTrip(
+                                participant.getPassenger().getId(),
+                                trip.getId(),
+                                distanceKm
+                        )
+                );
 
         return tripMapper.toDto(trip);
     }
@@ -4814,50 +5583,60 @@ import com.example.green.domain.entity.User;
 import com.example.green.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
 
+    @Transactional(readOnly = true)
     public List<UserResponseDto> findAll() {
-        return userRepository.findAll().stream()
+        return userRepository.findAll()
+                .stream()
                 .map(userMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public UserResponseDto findById(Long id) {
-        return userMapper.toDto(getUserOrThrow(id));
+        return userMapper.toDto(
+                getUserOrThrow(id)
+        );
     }
 
-    public UserResponseDto create(UserRequestDto request) {
-        User saved = userRepository.save(userMapper.toEntity(request));
-        return userMapper.toDto(saved);
+    @Transactional
+    public UserResponseDto update(
+            Long id,
+            UserRequestDto request
+    ) {
+        User user = getUserOrThrow(id);
+        userMapper.updateEntity(user, request);
+
+        return userMapper.toDto(
+                userRepository.save(user)
+        );
     }
 
-    public UserResponseDto update(Long id, UserRequestDto request) {
-        User entity = getUserOrThrow(id);
-        userMapper.updateEntity(entity, request);
-        User saved = userRepository.save(entity);
-        return userMapper.toDto(saved);
-    }
-
+    @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found: id=" + id);
-        }
-        userRepository.deleteById(id);
+        User user = getUserOrThrow(id);
+        userRepository.delete(user);
     }
 
     private User getUserOrThrow(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found: id=" + id
+                        )
+                );
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/util/GeoUtils.java
@@ -5140,6 +5919,21 @@ app:
     jwt-secret: "replace-with-very-long-secret-key-at-least-32-chars"
     access-ttl-seconds: 900
     refresh-ttl-seconds: 1209600
+  gamification:
+    recommended-esg-threshold: 70
+
+    trip:
+      coins-per-km: 2
+      co2-kg-per-passenger-km: 0.12
+      esg-per-completed-trip: 2
+
+    waste:
+      grams-per-coin: 100
+      esg-per-deposit: 1
+      plastic-co2-kg-per-kg: 1.5
+      paper-co2-kg-per-kg: 0.9
+      glass-co2-kg-per-kg: 0.3
+      battery-co2-kg-per-kg: 2.0
 server:
   port: 65535
 spring: #application in dev mode
@@ -5444,6 +6238,69 @@ File: ./green/src/main/resources/db/migration/V6__trip_destination_not_null.sql
 
 ALTER TABLE trips
     ALTER COLUMN destination_location SET NOT NULL;
+
+========================================
+File: ./green/src/main/resources/db/migration/V7__complete_gamification.sql
+========================================
+
+ALTER TABLE eco_transactions
+    ADD COLUMN esg_rating_delta INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE eco_transactions
+    ADD CONSTRAINT chk_eco_transactions_source
+        CHECK (
+            source IN (
+                       'TRIP_COMPLETED',
+                       'WASTE_DEPOSIT',
+                       'ADMIN_ADJUSTMENT'
+                )
+            );
+
+CREATE UNIQUE INDEX uk_eco_transactions_reward
+    ON eco_transactions(user_id, source, reference_id)
+    WHERE reference_id IS NOT NULL;
+
+
+CREATE TABLE user_achievements (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    achievement_code VARCHAR(50) NOT NULL,
+    unlocked_at TIMESTAMP NOT NULL,
+
+    CONSTRAINT fk_user_achievements_user
+        FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON DELETE CASCADE,
+
+    CONSTRAINT uk_user_achievement
+        UNIQUE (user_id, achievement_code),
+
+    CONSTRAINT chk_achievement_code
+        CHECK (
+            achievement_code IN (
+                'FIRST_ACTION',
+                'FIRST_SHARED_TRIP',
+                'CARPOOL_REGULAR',
+                'FIRST_WASTE_DEPOSIT',
+                'RECYCLING_REGULAR',
+                'ECOCOINS_100',
+                'ESG_70',
+                'CO2_10_KG'
+            )
+        )
+);
+
+CREATE INDEX idx_user_achievements_user
+    ON user_achievements(user_id);
+
+CREATE INDEX idx_users_leaderboard
+    ON users(
+             esg_rating DESC,
+             eco_coins_balance DESC,
+             total_co2_saved DESC,
+             id ASC
+        )
+    WHERE role IN ('STUDENT', 'EMPLOYEE');
 
 ========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java

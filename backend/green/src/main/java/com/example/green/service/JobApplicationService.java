@@ -27,7 +27,7 @@ public class JobApplicationService {
     private final VacancyRepository vacancyRepository;
     private final JobApplicationMapper jobApplicationMapper;
     private final CurrentUserService currentUserService;
-    private static final int RECOMMENDED_ESG_THRESHOLD = 70;
+    private final GamificationService gamificationService;
 
     @Transactional
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
@@ -76,8 +76,9 @@ public class JobApplicationService {
                             .getEsgRating();
 
                     boolean recommended =
-                            esg != null
-                                    && esg >= RECOMMENDED_ESG_THRESHOLD;
+                            gamificationService.isRecommended(
+                                    application.getStudent()
+                            );
 
                     return jobApplicationMapper.toCandidateDto(
                             application,
@@ -95,7 +96,10 @@ public class JobApplicationService {
 
         JobApplication saved = jobApplicationRepository.save(application);
         Integer esg = saved.getStudent().getEsgRating();
-        boolean recommended = esg != null && esg >= RECOMMENDED_ESG_THRESHOLD;
+        boolean recommended =
+                gamificationService.isRecommended(
+                        saved.getStudent()
+                );
 
         return jobApplicationMapper.toCandidateDto(saved, recommended);
     }

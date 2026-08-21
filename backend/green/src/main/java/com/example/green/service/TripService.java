@@ -35,7 +35,7 @@ public class TripService {
     private final TripMapper tripMapper;
     private final GeometryMapper geometryMapper;
     private final TripParticipantRepository tripParticipantRepository;
-    private final EcoRewardService ecoRewardService;
+    private final GamificationService gamificationService;
     private final CurrentUserService currentUserService;
 
     public List<TripResponseDto> findAllTrips() {
@@ -168,15 +168,30 @@ public class TripService {
                     "Trip cannot be completed before departure time"
             );
         }
+
         trip.changeStatus(TripStatus.COMPLETED);
         tripRepository.save(trip);
 
-        double distanceKm = GeoUtils.distanceKm(trip.getDepartureLocation(), trip.getDestinationLocation());
+        double distanceKm = GeoUtils.distanceKm(
+                trip.getDepartureLocation(),
+                trip.getDestinationLocation()
+        );
 
-        ecoRewardService.rewardForTripDistance(trip.getDriver(), distanceKm, trip.getId());
+        gamificationService.rewardForCompletedTrip(
+                trip.getDriver().getId(),
+                trip.getId(),
+                distanceKm
+        );
 
-        tripParticipantRepository.findByTripIdAndIsCancelledFalse(trip.getId())
-                .forEach(p -> ecoRewardService.rewardForTripDistance(p.getPassenger(), distanceKm, trip.getId()));
+        tripParticipantRepository
+                .findByTripIdAndIsCancelledFalse(trip.getId())
+                .forEach(participant ->
+                        gamificationService.rewardForCompletedTrip(
+                                participant.getPassenger().getId(),
+                                trip.getId(),
+                                distanceKm
+                        )
+                );
 
         return tripMapper.toDto(trip);
     }
