@@ -14,7 +14,7 @@ public class CompanyMapper {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .website(dto.getWebsite())
-                .isPartner(Boolean.TRUE.equals(dto.getIsPartner()))
+                .isPartner(false)
                 .build();
     }
 
@@ -22,9 +22,6 @@ public class CompanyMapper {
         company.setName(dto.getName());
         company.setDescription(dto.getDescription());
         company.setWebsite(dto.getWebsite());
-        company.setIsPartner(
-                Boolean.TRUE.equals(dto.getIsPartner())
-        );
     }
 
     public CompanyResponseDto toDto(Company company) {

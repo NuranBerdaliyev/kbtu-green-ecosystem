@@ -7,7 +7,8 @@ import lombok.*;
 @Entity
 @Table(name = "vacancies",
         indexes = {
-                @Index(name = "idx_vacancies_company", columnList = "company_id")
+                @Index(name = "idx_vacancies_company", columnList = "company_id"),
+                @Index(name = "idx_vacancies_active", columnList = "is_active")
         }
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -34,4 +35,8 @@ public class Vacancy {
     @NotBlank
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
+
+    @NotNull
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 }

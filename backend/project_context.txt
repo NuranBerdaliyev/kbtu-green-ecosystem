@@ -62,6 +62,126 @@ build/
 
 
 ========================================
+File: ./green/.idea/.gitignore
+========================================
+
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Ignored default folder with query files
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+
+========================================
+File: ./green/.idea/misc.xml
+========================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="openjdk-26" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>
+
+========================================
+File: ./green/.idea/vcs.xml
+========================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/../.." vcs="Git" />
+  </component>
+</project>
+
+========================================
+File: ./green/.idea/workspace.xml
+========================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="864b2dba-72aa-4ad9-8f45-7e35190ef10a" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3HDsjtFerq8Wk9DbiD8wB2rmDMN" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "Nuran",
+    "kotlin-language-version-configured": "true",
+    "nodejs_package_manager_path": "npm"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.26222.65" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.26222.65" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="864b2dba-72aa-4ad9-8f45-7e35190ef10a" name="Changes" comment="" />
+      <created>1785414117548</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1785414117548</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
+
+========================================
 File: ./green/.mvn/wrapper/maven-wrapper.properties
 ========================================
 
@@ -193,6 +313,16 @@ File: ./green/pom.xml
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -251,6 +381,53 @@ File: ./green/pom.xml
 </project>
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/controller/AdminController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.VacancyStatusRequestDto;
+import com.example.green.api.dto.response.AdminDashboardResponseDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.service.AdminService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/admin")
+@RequiredArgsConstructor
+@Validated
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminController {
+
+    private final AdminService adminService;
+
+    @GetMapping("/dashboard")
+    public AdminDashboardResponseDto dashboard() {
+        return adminService.getDashboard();
+    }
+
+    @GetMapping("/vacancies")
+    public Page<VacancyResponseDto> vacancies(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                              @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return adminService.getAllVacancies(page, size);
+    }
+
+    @PatchMapping("/vacancies/{vacancyId}/status")
+    public VacancyResponseDto changeVacancyStatus(@PathVariable @Positive Long vacancyId,
+                                                  @Valid @RequestBody VacancyStatusRequestDto request) {
+        return adminService.changeVacancyStatus(vacancyId, request);
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/controller/AuthController.java
 ========================================
 
@@ -300,6 +477,7 @@ File: ./green/src/main/java/com/example/green/api/controller/CompanyController.j
 
 package com.example.green.api.controller;
 
+import com.example.green.api.dto.request.CompanyPartnerStatusRequestDto;
 import com.example.green.api.dto.request.CompanyRequestDto;
 import com.example.green.api.dto.response.CompanyResponseDto;
 import com.example.green.service.CompanyService;
@@ -309,6 +487,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -330,31 +509,85 @@ public class CompanyController {
         return companyService.findById(id);
     }
 
+
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<CompanyResponseDto> myCompanies() {
         return companyService.findMyCompanies();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto create(@Valid @RequestBody CompanyRequestDto request) {
         return companyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody CompanyRequestDto request) {
         return companyService.update(id, request);
     }
 
+    @PatchMapping("/{id}/partner-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CompanyResponseDto changePartnerStatus(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody
+            CompanyPartnerStatusRequestDto request
+    ) {
+        return companyService.changePartnerStatus(id, request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         companyService.delete(id);
     }
 }
 
 ========================================
-File: ./green/src/main/java/com/example/green/api/controller/EcoPointController.java
+File: ./green/src/main/java/com/example/green/api/controller/EcoPointContainerActionController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.WasteDepositRequestDto;
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.service.EcoPointsContainerActionService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/eco-points")
+@RequiredArgsConstructor
+@Validated
+public class EcoPointContainerActionController {
+    private final EcoPointsContainerActionService actionService;
+
+    // 获取所有激活状态的回收箱列表及实时满溢度
+    @GetMapping
+    public List<EcoPointContainerResponseDto> getActiveContainers() {
+        return actionService.getActiveContainers();
+    }
+
+    // 接收 qrCodeToken 与投递参数进行积分计算并更新数据
+    @PostMapping("/deposit")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WasteLogResponseDto deposit(@Valid @RequestBody WasteDepositRequestDto request) {
+        return actionService.processDeposit(request);
+    }
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/controller/EcoPointContainerController.java
 ========================================
 
 package com.example.green.api.controller;
@@ -366,6 +599,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -375,7 +609,8 @@ import java.util.List;
 @RequestMapping("/api/eco-point-containers")
 @RequiredArgsConstructor
 @Validated
-public class EcoPointController {
+@PreAuthorize("hasRole('ADMIN')")
+public class EcoPointContainerController {
     private final EcoPointContainerService ecoPointContainerService;
 
     @GetMapping
@@ -409,44 +644,57 @@ public class EcoPointController {
 
 
 ========================================
-File: ./green/src/main/java/com/example/green/api/controller/EcoPointsActionController.java
+File: ./green/src/main/java/com/example/green/api/controller/GamificationController.java
 ========================================
 
 package com.example.green.api.controller;
 
-import com.example.green.api.dto.request.WasteDepositRequestDto;
-import com.example.green.api.dto.response.EcoPointContainerResponseDto;
-import com.example.green.api.dto.response.WasteLogResponseDto;
-import com.example.green.service.EcoPointsActionService;
-import jakarta.validation.Valid;
+import com.example.green.api.dto.response.*;
+import com.example.green.service.GamificationService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/eco-points")
+@RequestMapping("/api/gamification")
 @RequiredArgsConstructor
 @Validated
-public class EcoPointsActionController {
-    private final EcoPointsActionService actionService;
+public class GamificationController {
 
-    // 获取所有激活状态的回收箱列表及实时满溢度
-    @GetMapping
-    public List<EcoPointContainerResponseDto> getActiveContainers() {
-        return actionService.getActiveContainers();
+    private final GamificationService gamificationService;
+
+    @GetMapping("/me")
+    public GamificationProfileResponseDto myProfile() {
+        return gamificationService.getMyProfile();
     }
 
-    // 接收 qrCodeToken 与投递参数进行积分计算并更新数据
-    @PostMapping("/deposit")
-    @ResponseStatus(HttpStatus.CREATED)
-    public WasteLogResponseDto deposit(@Valid @RequestBody WasteDepositRequestDto request) {
-        // JwtAuthenticationFilter 在拦截时已经将解析得到的 userId 作为 Principal 存入上下文
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return actionService.processDeposit(userId, request);
+    @GetMapping("/me/history")
+    public Page<EcoTransactionResponseDto> myHistory(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        return gamificationService.getMyHistory(page, size);
+    }
+
+    @GetMapping("/me/achievements")
+    public List<AchievementResponseDto> myAchievements() {
+        return gamificationService.getMyAchievements();
+    }
+
+    @GetMapping("/leaderboard")
+    public Page<LeaderboardEntryResponseDto> leaderboard(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    ) {
+        return gamificationService.getLeaderboard(
+                page,
+                size
+        );
     }
 }
 
@@ -460,6 +708,7 @@ import com.example.green.api.dto.request.JobApplicationRequestDto;
 import com.example.green.api.dto.request.JobApplicationStatusRequestDto;
 import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.domain.enums.CandidateSort;
 import com.example.green.service.JobApplicationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -493,8 +742,8 @@ public class JobApplicationController {
     }
 
     @GetMapping("/vacancies/{vacancyId}/applications")
-    public List<CandidateResponseDto> candidates(@PathVariable @Positive Long vacancyId) {
-        return jobApplicationService.findCandidates(vacancyId);
+    public List<CandidateResponseDto> candidates(@PathVariable @Positive Long vacancyId, @RequestParam(defaultValue = "ESG_DESC") CandidateSort sort) {
+        return jobApplicationService.findCandidates(vacancyId, sort);
     }
 
     @PatchMapping("/applications/{applicationId}/status")
@@ -687,6 +936,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -694,6 +944,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
     private final UserService userService;
 
@@ -705,12 +956,6 @@ public class UserController {
     @GetMapping("/{id}")
     public UserResponseDto findById(@PathVariable @Positive Long id) {
         return userService.findById(id);
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDto create(@RequestBody @Valid UserRequestDto request) {
-        return userService.create(request);
     }
 
     @PutMapping("/{id}")
@@ -744,6 +989,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -760,6 +1006,7 @@ public class VacancyController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<VacancyResponseDto> myVacancies() {
         return vacancyService.findMyVacancies();
     }
@@ -771,17 +1018,20 @@ public class VacancyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto create(@Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         vacancyService.delete(id);
     }
@@ -793,13 +1043,11 @@ File: ./green/src/main/java/com/example/green/api/controller/WasteLogController.
 
 package com.example.green.api.controller;
 
-import com.example.green.api.dto.request.WasteLogRequestDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.service.WasteLogService;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -809,6 +1057,7 @@ import java.util.List;
 @RequestMapping("/api/waste-logs")
 @RequiredArgsConstructor
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class WasteLogController {
     private final WasteLogService wasteLogService;
 
@@ -821,26 +1070,27 @@ public class WasteLogController {
     public WasteLogResponseDto findById(@PathVariable @Positive Long id) {
         return wasteLogService.findById(id);
     }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public WasteLogResponseDto create(@RequestBody @Valid WasteLogRequestDto request) {
-        return wasteLogService.create(request);
-    }
-
-    @PutMapping("/{id}")
-    public WasteLogResponseDto update(@PathVariable @Positive Long id,
-                                      @RequestBody @Valid WasteLogRequestDto request) {
-        return wasteLogService.update(id, request);
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable @Positive Long id) {
-        wasteLogService.delete(id);
-    }
 }
 
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/CompanyPartnerStatusRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CompanyPartnerStatusRequestDto {
+
+    @NotNull
+    private Boolean isPartner;
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/CompanyRequestDto.java
@@ -863,8 +1113,6 @@ public class CompanyRequestDto {
 
     @Size(max = 500)
     private String website;
-
-    private Boolean isPartner;
 }
 
 ========================================
@@ -1136,11 +1384,13 @@ import com.example.green.domain.enums.Role;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserRequestDto {
+
     @NotBlank
     @Email
     @Size(max = 255)
@@ -1152,25 +1402,7 @@ public class UserRequestDto {
 
     @NotNull
     private Role role;
-
-    @NotNull
-    @Min(0)
-    private Long ecoCoinsBalance;
-
-    @NotNull
-    @Min(0)
-    @Max(100)
-    private Integer esgRating;
-
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = true)
-    @Digits(integer = 12, fraction = 3)
-    private BigDecimal totalCo2Saved;
-
-    @NotNull
-    private LocalDateTime createdAt;
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/VacancyRequestDto.java
@@ -1218,6 +1450,19 @@ public class VacancySearchRequestDto {
     @Min(1)
     @Builder.Default
     private Integer size = 20;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/VacancyStatusRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class VacancyStatusRequestDto {
+    @NotNull
+    private Boolean isActive;
 }
 
 ========================================
@@ -1277,6 +1522,56 @@ public class WasteLogRequestDto {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/AchievementResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.AchievementCode;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class AchievementResponseDto {
+
+    private AchievementCode code;
+    private String title;
+    private String description;
+    private Boolean unlocked;
+    private LocalDateTime unlockedAt;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/AdminDashboardResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import lombok.*;
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class AdminDashboardResponseDto {
+
+    private Long totalUsers;
+    private Long students;
+    private Long employees;
+    private Long hrManagers;
+
+    private Long totalContainers;
+    private Long activeContainers;
+    private Long criticalContainers;
+
+    private Long totalCompanies;
+    private Long partnerCompanies;
+
+    private Long totalVacancies;
+    private Long activeVacancies;
+    private Long totalApplications;
+
+    private Long totalEcoTransactions;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/AuthResponseDto.java
 ========================================
 
@@ -1321,6 +1616,7 @@ public class CandidateResponseDto {
     private Integer esgRating;
     private Long ecoCoinsBalance;
     private BigDecimal totalCo2Saved;
+    private Boolean recommended;
     private String coverLetter;
     private LocalDateTime appliedAt;
     private JobStatus jobStatus;
@@ -1371,6 +1667,48 @@ public class EcoPointContainerResponseDto {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/EcoTransactionResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.EcoTransactionSource;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class EcoTransactionResponseDto {
+    private Long id;
+    private EcoTransactionSource source;
+    private Long referenceId;
+    private Long ecoCoinsDelta;
+    private Integer esgRatingDelta;
+    private BigDecimal co2SavedDelta;
+    private LocalDateTime createdAt;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/GamificationProfileResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+import lombok.*;
+import java.math.BigDecimal;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class GamificationProfileResponseDto {
+    private Long userId;
+    private String fullName;
+    private Long ecoCoinsBalance;
+    private Integer esgRating;
+    private BigDecimal totalCo2Saved;
+    private Long leaderboardRank;
+    private Long unlockedAchievements;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/JobApplicationResponseDto.java
 ========================================
 
@@ -1391,6 +1729,26 @@ public class JobApplicationResponseDto {
     private LocalDateTime appliedAt;
     private String coverLetter;
     private JobStatus jobStatus;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/LeaderboardEntryResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import lombok.*;
+
+import java.math.BigDecimal;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class LeaderboardEntryResponseDto {
+    private Long rank;
+    private Long userId;
+    private String fullName;
+    private Integer esgRating;
+    private Long ecoCoinsBalance;
+    private BigDecimal totalCo2Saved;
 }
 
 ========================================
@@ -1506,6 +1864,7 @@ public class VacancyResponseDto {
     private String title;
     private String description;
     private Boolean partnerCompany;
+    private Boolean isActive;
 }
 
 ========================================
@@ -1571,6 +1930,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -1761,6 +2121,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String message,
@@ -1856,7 +2228,7 @@ public class CompanyMapper {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .website(dto.getWebsite())
-                .isPartner(Boolean.TRUE.equals(dto.getIsPartner()))
+                .isPartner(false)
                 .build();
     }
 
@@ -1864,9 +2236,6 @@ public class CompanyMapper {
         company.setName(dto.getName());
         company.setDescription(dto.getDescription());
         company.setWebsite(dto.getWebsite());
-        company.setIsPartner(
-                Boolean.TRUE.equals(dto.getIsPartner())
-        );
     }
 
     public CompanyResponseDto toDto(Company company) {
@@ -1931,6 +2300,72 @@ public class EcoPointContainerMapper {
     }
 }
 
+
+========================================
+File: ./green/src/main/java/com/example/green/api/mapper/GamificationMapper.java
+========================================
+
+package com.example.green.api.mapper;
+
+import com.example.green.api.dto.response.*;
+import com.example.green.domain.entity.EcoTransaction;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.UserAchievement;
+import com.example.green.domain.enums.AchievementCode;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GamificationMapper {
+
+    public EcoTransactionResponseDto toEcoTransactionDto(EcoTransaction transaction) {
+        return EcoTransactionResponseDto.builder()
+                .id(transaction.getId())
+                .source(transaction.getSource())
+                .referenceId(transaction.getReferenceId())
+                .ecoCoinsDelta(transaction.getEcoCoinsDelta())
+                .esgRatingDelta(transaction.getEsgRatingDelta())
+                .co2SavedDelta(transaction.getCo2SavedDelta())
+                .createdAt(transaction.getCreatedAt())
+                .build();
+    }
+
+    public AchievementResponseDto toAchievementDto(AchievementCode code, UserAchievement unlockedAchievement) {
+        boolean unlocked = unlockedAchievement != null;
+
+        return AchievementResponseDto.builder()
+                .code(code)
+                .title(code.getTitle())
+                .description(code.getDescription())
+                .unlocked(unlocked)
+                .unlockedAt(
+                        unlocked ? unlockedAchievement.getUnlockedAt() : null
+                )
+                .build();
+    }
+
+    public LeaderboardEntryResponseDto toLeaderboardDto(User user, long rank) {
+        return LeaderboardEntryResponseDto.builder()
+                .rank(rank)
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .esgRating(user.getEsgRating())
+                .ecoCoinsBalance(user.getEcoCoinsBalance())
+                .totalCo2Saved(user.getTotalCo2Saved())
+                .build();
+    }
+
+    public GamificationProfileResponseDto toGamificationProfileDto(User user, Long rank, long achievementCount) {
+        return GamificationProfileResponseDto.builder()
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .ecoCoinsBalance(user.getEcoCoinsBalance())
+                .esgRating(user.getEsgRating())
+                .totalCo2Saved(user.getTotalCo2Saved())
+                .leaderboardRank(rank)
+                .unlockedAchievements(achievementCount)
+                .build();
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/GeometryMapper.java
@@ -2026,7 +2461,7 @@ public class JobApplicationMapper {
                 .build();
     }
 
-    public CandidateResponseDto toCandidateDto(JobApplication entity) {
+    public CandidateResponseDto toCandidateDto(JobApplication entity, boolean recommended) {
         User student = entity.getStudent();
         return CandidateResponseDto.builder()
                 .applicationId(entity.getId())
@@ -2035,6 +2470,7 @@ public class JobApplicationMapper {
                 .esgRating(student.getEsgRating())
                 .ecoCoinsBalance(student.getEcoCoinsBalance())
                 .totalCo2Saved(student.getTotalCo2Saved())
+                .recommended(recommended)
                 .coverLetter(entity.getCoverLetter())
                 .appliedAt(entity.getAppliedAt())
                 .jobStatus(entity.getJobStatus())
@@ -2194,26 +2630,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper {
-    public User toEntity(UserRequestDto dto) {
-        return User.builder()
-                .email(dto.getEmail())
-                .fullName(dto.getFullName())
-                .role(dto.getRole())
-                .ecoCoinsBalance(dto.getEcoCoinsBalance())
-                .esgRating(dto.getEsgRating())
-                .totalCo2Saved(dto.getTotalCo2Saved())
-                .createdAt(dto.getCreatedAt())
-                .build();
-    }
 
-    public void updateEntity(User entity, UserRequestDto dto) {
+    public void updateEntity(
+            User entity,
+            UserRequestDto dto
+    ) {
         entity.setEmail(dto.getEmail());
         entity.setFullName(dto.getFullName());
         entity.setRole(dto.getRole());
-        entity.setEcoCoinsBalance(dto.getEcoCoinsBalance());
-        entity.setEsgRating(dto.getEsgRating());
-        entity.setTotalCo2Saved(dto.getTotalCo2Saved());
-        entity.setCreatedAt(dto.getCreatedAt());
     }
 
     public UserResponseDto toDto(User entity) {
@@ -2229,7 +2653,6 @@ public class UserMapper {
                 .build();
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/VacancyMapper.java
@@ -2252,6 +2675,7 @@ public class VacancyMapper {
                 .company(company)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
+                .isActive(true)
                 .build();
     }
 
@@ -2272,6 +2696,7 @@ public class VacancyMapper {
                 .partnerCompany(
                         vacancy.getCompany().getIsPartner()
                 )
+                .isActive(vacancy.getIsActive())
                 .build();
     }
 }
@@ -2356,6 +2781,99 @@ public class AuthProperties {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/config/GamificationProperties.java
+========================================
+
+package com.example.green.config;
+
+import com.example.green.domain.enums.WasteType;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+@Validated
+@ConfigurationProperties(prefix = "app.gamification")
+public class GamificationProperties {
+    @Valid
+    @NotNull
+    private Trip trip = new Trip();
+
+    @Valid
+    @NotNull
+    private Waste waste = new Waste();
+
+    @Min(0)
+    @Max(100)
+    private int recommendedEsgThreshold = 70;
+    @Getter
+    @Setter
+    public static class Trip {
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal coinsPerKm = BigDecimal.valueOf(2);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal co2KgPerPassengerKm =
+                BigDecimal.valueOf(0.12);
+
+        @Min(1)
+        private int esgPerCompletedTrip = 2;
+    }
+
+    @Getter
+    @Setter
+    public static class Waste {
+
+        @Min(1)
+        private int gramsPerCoin = 100;
+
+        @Min(1)
+        private int esgPerDeposit = 1;
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal plasticCo2KgPerKg =
+                BigDecimal.valueOf(1.5);
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal paperCo2KgPerKg =
+                BigDecimal.valueOf(0.9);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal glassCo2KgPerKg =
+                BigDecimal.valueOf(0.3);
+
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = false)
+        private BigDecimal batteryCo2KgPerKg =
+                BigDecimal.valueOf(2.0);
+
+        public BigDecimal co2Coefficient(WasteType wasteType) {
+            return switch (wasteType) {
+                case PLASTIC -> plasticCo2KgPerKg;
+                case PAPER -> paperCo2KgPerKg;
+                case GLASS -> glassCo2KgPerKg;
+                case BATTERY -> batteryCo2KgPerKg;
+            };
+        }
+    }
+}
+
+
+========================================
 File: ./green/src/main/java/com/example/green/config/SecurityConfig.java
 ========================================
 
@@ -2364,6 +2882,7 @@ import com.example.green.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -2375,6 +2894,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -2624,6 +3144,10 @@ public class EcoTransaction {
     @NotNull
     @Column(name = "eco_coins_delta", nullable = false)
     private Long ecoCoinsDelta;
+
+    @NotNull
+    @Column(name = "esg_rating_delta", nullable = false)
+    private Integer esgRatingDelta;
 
     @Column(name = "co2_saved_delta", precision = 15, scale = 3)
     private BigDecimal co2SavedDelta;
@@ -2992,6 +3516,52 @@ public class User {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/entity/UserAchievement.java
+========================================
+
+package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.AchievementCode;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "user_achievements",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_user_achievement",
+                        columnNames = {
+                                "user_id",
+                                "achievement_code"
+                        }
+                )
+        }
+)
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class UserAchievement {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "achievement_code", nullable = false, length = 50)
+    private AchievementCode code;
+
+    @NotNull
+    @Column(name = "unlocked_at", nullable = false)
+    private LocalDateTime unlockedAt;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/entity/Vacancy.java
 ========================================
 
@@ -3004,7 +3574,8 @@ import lombok.*;
 @Entity
 @Table(name = "vacancies",
         indexes = {
-                @Index(name = "idx_vacancies_company", columnList = "company_id")
+                @Index(name = "idx_vacancies_company", columnList = "company_id"),
+                @Index(name = "idx_vacancies_active", columnList = "is_active")
         }
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -3031,6 +3602,10 @@ public class Vacancy {
     @NotBlank
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
+
+    @NotNull
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 }
 
 
@@ -3072,6 +3647,85 @@ public class WasteLog {
     @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
     @Column(name = "eco_coins_earned", nullable = false)
     private Integer ecoCoinsEarned;
+}
+
+
+========================================
+File: ./green/src/main/java/com/example/green/domain/enums/AchievementCode.java
+========================================
+
+package com.example.green.domain.enums;
+
+public enum AchievementCode {
+    FIRST_ACTION(
+            "Первый шаг",
+            "Совершено первое экологическое действие"
+    ),
+
+    FIRST_SHARED_TRIP(
+            "Первая совместная поездка",
+            "Завершена первая совместная поездка"
+    ),
+
+    CARPOOL_REGULAR(
+            "Постоянный попутчик",
+            "Завершено 10 совместных поездок"
+    ),
+
+    FIRST_WASTE_DEPOSIT(
+            "Начало переработки",
+            "Совершена первая сдача отходов"
+    ),
+
+    RECYCLING_REGULAR(
+            "Ответственный переработчик",
+            "Совершено 10 сдач отходов"
+    ),
+
+    ECOCOINS_100(
+            "Первые 100 EcoCoins",
+            "Накоплено не менее 100 EcoCoins"
+    ),
+
+    ESG_70(
+            "ESG-лидер",
+            "Достигнут ESG-рейтинг 70"
+    ),
+
+    CO2_10_KG(
+            "Защитник климата",
+            "Предотвращено не менее 10 кг CO₂"
+    );
+
+    private final String title;
+    private final String description;
+
+    AchievementCode(String title, String description) {
+        this.title = title;
+        this.description = description;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+
+}
+
+
+========================================
+File: ./green/src/main/java/com/example/green/domain/enums/CandidateSort.java
+========================================
+
+package com.example.green.domain.enums;
+
+public enum CandidateSort {
+    ESG_DESC,
+    APPLIED_AT_DESC
 }
 
 
@@ -3141,6 +3795,29 @@ public enum WasteType {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/model/RewardResult.java
+========================================
+
+package com.example.green.domain.model;
+
+import com.example.green.domain.enums.AchievementCode;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public record RewardResult(
+        long ecoCoinsEarned,
+        int esgRatingEarned,
+        BigDecimal co2Saved,
+        boolean applied,
+        List<AchievementCode> newAchievements
+) {
+    public RewardResult {
+        newAchievements = List.copyOf(newAchievements);
+    }
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/repository/AuthenticationRepository.java
 ========================================
 
@@ -3169,6 +3846,7 @@ import java.util.List;
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     List<Company> findByHrManagerIdOrderByNameAsc(Long hrManagerId);
     boolean existsByHrManagerIdAndNameIgnoreCase(Long hrManagerId, String name);
+    long countByIsPartnerTrue();
 }
 
 ========================================
@@ -3186,12 +3864,12 @@ import java.util.Optional;
 
 public interface EcoPointContainerRepository extends JpaRepository<EcoPointContainer, Long> {
     List<EcoPointContainer> findByWasteTypeAndIsActive(WasteType wasteType, Boolean isActive);
-
     // 新增：获取所有激活状态的回收箱
     List<EcoPointContainer> findByIsActiveTrue();
-
     // 新增：根据二维码 token 查询回收箱
     Optional<EcoPointContainer> findByQrCodeToken(String qrCodeToken);
+    long countByIsActiveTrue();
+    long countByIsActiveTrueAndFullnessPercentageGreaterThanEqual(Integer fullnessPercentage);
 }
 
 ========================================
@@ -3201,11 +3879,19 @@ File: ./green/src/main/java/com/example/green/domain/repository/EcoTransactionRe
 package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.EcoTransaction;
+import com.example.green.domain.enums.EcoTransactionSource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
+
 public interface EcoTransactionRepository extends JpaRepository<EcoTransaction, Long>{
-    List<EcoTransaction> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<EcoTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Optional<EcoTransaction> findByUserIdAndSourceAndReferenceId(Long userId, EcoTransactionSource source, Long referenceId);
+    long countByUserId(Long userId);
+    long countByUserIdAndSource(Long userId, EcoTransactionSource source);
 }
 
 ========================================
@@ -3223,11 +3909,10 @@ import java.util.List;
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
     List<JobApplication> findByStudentIdOrderByAppliedAtDesc(Long studentId);
     List<JobApplication> findByVacancyIdOrderByAppliedAtDesc(Long vacancyId);
+    List<JobApplication> findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(Long vacancyId);
+    List<JobApplication> findByJobStatus(JobStatus jobStatus);
     boolean existsByVacancyIdAndStudentId(Long vacancyId, Long studentId);
     boolean existsByVacancyId(Long vacancyId);
-    List<JobApplication> findByStudentId(Long studentId);
-    List<JobApplication> findByVacancyId(Long vacancyId);
-    List<JobApplication> findByJobStatus(JobStatus jobStatus);
 }
 
 ========================================
@@ -3288,16 +3973,82 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/repository/UserAchievementRepository.java
+========================================
+
+package com.example.green.domain.repository;
+
+import com.example.green.domain.entity.UserAchievement;
+import com.example.green.domain.enums.AchievementCode;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface UserAchievementRepository extends JpaRepository<UserAchievement, Long> {
+    List<UserAchievement> findByUserIdOrderByUnlockedAtAsc(Long userId);
+    boolean existsByUserIdAndCode(Long userId, AchievementCode code);
+    long countByUserId(Long userId);
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/repository/UserRepository.java
 ========================================
 
 package com.example.green.domain.repository;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByEmail(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") Long id);
+
+    Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
+    long countByRole(Role role);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select count(u) + 1
+            from User u
+            where u.role in :roles
+              and (
+                   u.esgRating > :esg
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance > :coins
+                   )
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance = :coins
+                       and u.totalCo2Saved > :co2
+                   )
+                   or (
+                       u.esgRating = :esg
+                       and u.ecoCoinsBalance = :coins
+                       and u.totalCo2Saved = :co2
+                       and u.id < :userId
+                   )
+              )
+            """)
+    long calculateRank(
+            @Param("roles") Collection<Role> roles,
+            @Param("userId") Long userId,
+            @Param("esg") Integer esg,
+            @Param("coins") Long coins,
+            @Param("co2") BigDecimal co2
+    );
 }
 
 
@@ -3311,11 +4062,14 @@ import com.example.green.domain.entity.Vacancy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
+import java.util.Optional;
 
 public interface VacancyRepository extends JpaRepository<Vacancy, Long>,
         JpaSpecificationExecutor<Vacancy> {
     List<Vacancy> findByHrManagerIdOrderByIdDesc(Long hrManagerId);
     boolean existsByCompanyId(Long companyId);
+    Optional<Vacancy> findByIdAndIsActiveTrueAndCompany_IsPartnerTrue(Long id);
+    long countByIsActiveTrue();
 }
 
 ========================================
@@ -3332,6 +4086,7 @@ import java.util.List;
 public interface WasteLogRepository extends JpaRepository<WasteLog, Long> {
     List<WasteLog> findByUserId(Long userId);
     List<WasteLog> findByEcoPointContainerId(Long ecoPointContainerId);
+    boolean existsByEcoPointContainerId(Long ecoPointContainerId);
 }
 
 ========================================
@@ -3341,11 +4096,12 @@ File: ./green/src/main/java/com/example/green/GreenApplication.java
 package com.example.green;
 
 import com.example.green.config.AuthProperties;
+import com.example.green.config.GamificationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-@EnableConfigurationProperties(AuthProperties.class) //Enable Auth properties class for jwt parameters
+@EnableConfigurationProperties({AuthProperties.class, GamificationProperties.class}) //Enable Auth properties class for jwt parameters
 @SpringBootApplication//here Spring starts to run
 public class GreenApplication {
     public static void main(String[] args) {
@@ -3430,6 +4186,101 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 }
 
+
+========================================
+File: ./green/src/main/java/com/example/green/service/AdminService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.request.VacancyStatusRequestDto;
+import com.example.green.api.dto.response.AdminDashboardResponseDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.api.error.ForbiddenException;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.VacancyMapper;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class AdminService {
+
+    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final VacancyRepository vacancyRepository;
+    private final JobApplicationRepository jobApplicationRepository;
+    private final EcoPointContainerRepository containerRepository;
+    private final EcoTransactionRepository ecoTransactionRepository;
+    private final CurrentUserService currentUserService;
+    private final VacancyMapper vacancyMapper;
+
+    @Transactional(readOnly = true)
+    public AdminDashboardResponseDto getDashboard() {
+        requireAdmin();
+
+        return AdminDashboardResponseDto.builder()
+                .totalUsers(userRepository.count())
+                .students(userRepository.countByRole(Role.STUDENT))
+                .employees(userRepository.countByRole(Role.EMPLOYEE))
+                .hrManagers(userRepository.countByRole(Role.HR))
+                .totalContainers(containerRepository.count())
+                .activeContainers(
+                        containerRepository.countByIsActiveTrue()
+                )
+                .criticalContainers(
+                        containerRepository.countByIsActiveTrueAndFullnessPercentageGreaterThanEqual(90)
+                )
+                .totalCompanies(companyRepository.count())
+                .partnerCompanies(companyRepository.countByIsPartnerTrue())
+                .totalVacancies(vacancyRepository.count())
+                .activeVacancies(vacancyRepository.countByIsActiveTrue())
+                .totalApplications(jobApplicationRepository.count())
+                .totalEcoTransactions(ecoTransactionRepository.count())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VacancyResponseDto> getAllVacancies(int page, int size) {
+        requireAdmin();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        return vacancyRepository.findAll(pageable).map(vacancyMapper::toDto);
+    }
+
+    @Transactional
+    public VacancyResponseDto changeVacancyStatus(Long vacancyId, VacancyStatusRequestDto request) {
+        requireAdmin();
+        Vacancy vacancy = vacancyRepository.findById(vacancyId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Vacancy not found: id=" + vacancyId)
+                );
+
+        if (Boolean.TRUE.equals(request.getIsActive())
+                && !Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy cannot be activated because company is not a partner");
+        }
+
+        vacancy.setIsActive(request.getIsActive());
+
+        return vacancyMapper.toDto(vacancyRepository.save(vacancy));
+    }
+
+    private User requireAdmin() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("Only administrators can perform this action");
+        }
+
+        return user;
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/AuthService.java
@@ -3535,6 +4386,7 @@ File: ./green/src/main/java/com/example/green/service/CompanyService.java
 
 package com.example.green.service;
 
+import com.example.green.api.dto.request.CompanyPartnerStatusRequestDto;
 import com.example.green.api.dto.request.CompanyRequestDto;
 import com.example.green.api.dto.response.CompanyResponseDto;
 import com.example.green.api.error.ForbiddenException;
@@ -3618,6 +4470,28 @@ public class CompanyService {
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found: id=" + id));
     }
 
+    @Transactional
+    public CompanyResponseDto changePartnerStatus(Long companyId, CompanyPartnerStatusRequestDto request) {
+        requireAdmin();
+        Company company = getCompanyOrThrow(companyId);
+        company.setIsPartner(request.getIsPartner());
+
+        return companyMapper.toDto(
+                companyRepository.save(company)
+        );
+    }
+
+    private User requireAdmin() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException(
+                    "Only administrators can change company partner status"
+            );
+        }
+
+        return user;
+    }
     private User requireHr() {
         User user = currentUserService.getCurrentUserOrThrow();
         if (user.getRole() != Role.HR) {
@@ -3699,8 +4573,10 @@ import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -3708,46 +4584,50 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EcoPointContainerService {
     private final EcoPointContainerRepository ecoPointContainerRepository;
+    private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
 
+    @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
         return ecoPointContainerRepository.findAll().stream()
                 .map(ecoPointContainerMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public EcoPointContainerResponseDto findById(Long id) {
         return ecoPointContainerMapper.toDto(getOrThrow(id));
     }
 
+    @Transactional
     public EcoPointContainerResponseDto create(EcoPointContainerRequestDto request) {
         EcoPointContainer saved = ecoPointContainerRepository.save(ecoPointContainerMapper.toEntity(request));
         return ecoPointContainerMapper.toDto(saved);
     }
 
+    @Transactional
     public EcoPointContainerResponseDto update(Long id, EcoPointContainerRequestDto request) {
         EcoPointContainer entity = getOrThrow(id);
         ecoPointContainerMapper.updateEntity(entity, request);
-        EcoPointContainer saved = ecoPointContainerRepository.save(entity);
-        return ecoPointContainerMapper.toDto(saved);
+        return ecoPointContainerMapper.toDto(ecoPointContainerRepository.save(entity));
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!ecoPointContainerRepository.existsById(id)) {
-            throw new ResourceNotFoundException("EcoPointContainer not found: id=" + id);
+        EcoPointContainer container = getOrThrow(id);
+        if (wasteLogRepository.existsByEcoPointContainerId(id)) {
+            throw new IllegalStateException("Container with waste history cannot be deleted. Deactivate it instead");
         }
         ecoPointContainerRepository.deleteById(id);
     }
 
     private EcoPointContainer getOrThrow(Long id) {
-        return ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
+        return ecoPointContainerRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
     }
 }
 
-
 ========================================
-File: ./green/src/main/java/com/example/green/service/EcoPointsActionService.java
+File: ./green/src/main/java/com/example/green/service/EcoPointsContainerActionService.java
 ========================================
 
 package com.example.green.service;
@@ -3758,12 +4638,9 @@ import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.api.mapper.WasteLogMapper;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.entity.WasteLog;
-import com.example.green.domain.repository.EcoPointContainerRepository;
-import com.example.green.domain.repository.UserRepository;
-import com.example.green.domain.repository.WasteLogRepository;
+import com.example.green.domain.entity.*;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -3774,114 +4651,94 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class EcoPointsActionService {
-    private final EcoPointContainerRepository containerRepo;
-    private final WasteLogRepository wasteLogRepo;
-    private final UserRepository userRepository;
+public class EcoPointsContainerActionService {
+
+    private final EcoPointContainerRepository containerRepository;
+    private final WasteLogRepository wasteLogRepository;
+    private final CurrentUserService currentUserService;
     private final GamificationService gamificationService;
-    private final SimpMessagingTemplate messagingTemplate; // WebSocket 推送模版
+    private final SimpMessagingTemplate messagingTemplate;
     private final EcoPointContainerMapper containerMapper;
     private final WasteLogMapper wasteLogMapper;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> getActiveContainers() {
-        return containerRepo.findByIsActiveTrue()
+        return containerRepository
+                .findByIsActiveTrue()
                 .stream()
                 .map(containerMapper::toDto)
                 .toList();
     }
 
     @Transactional
-    public WasteLogResponseDto processDeposit(Long userId, WasteDepositRequestDto request) {
-        // 1. 校验二维码与激活状态
-        EcoPointContainer container = containerRepo.findByQrCodeToken(request.getQrCodeToken())
-                .orElseThrow(() -> new ResourceNotFoundException("Неверный QR-код или контейнер не найден"));
+    public WasteLogResponseDto processDeposit(WasteDepositRequestDto request) {
+        User user = currentUserService.getCurrentUserOrThrow();
 
-        if (!container.getIsActive()) {
-            throw new IllegalStateException("Контейнер не активен");
+        EcoPointContainer container = containerRepository
+                        .findByQrCodeToken(
+                                request.getQrCodeToken()
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Invalid QR code or container not found")
+                        );
+
+        if (!Boolean.TRUE.equals(container.getIsActive())) {
+            throw new IllegalStateException("Container is not active");
         }
 
-        // 2. 更新满溢度
-        int newFullness = container.getFullnessPercentage() + request.getAddedFullnessPercentage();
-        if (newFullness > 100) newFullness = 100;
+        int newFullness = Math.min(
+                100,
+                container.getFullnessPercentage()
+                        + request.getAddedFullnessPercentage()
+        );
+
         container.setFullnessPercentage(newFullness);
-        containerRepo.save(container);
+        containerRepository.save(container);
 
-        // 3. WebSocket 实时广播
-        EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
-        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
-
-        // 若满溢度超 90%，发送管理员阈值预警
-        if (newFullness >= 90) {
-            messagingTemplate.convertAndSend("/topic/admin/alerts",
-                    "Внимание! Контейнер ID " + container.getId() + " заполнен на " + newFullness + "%!");
-        }
-
-        // 4. 计算奖励并发放积分与 ESG
-        int earnedCoins = gamificationService.processDepositRewards(userId, container.getId(), request.getWasteWeightGrams());
-
-        // 5. 记录投递日志
-        User user = userRepository.getReferenceById(userId);
+        /*
+         * Сначала создаём WasteLog, чтобы получить уникальный
+         * id конкретной сдачи отходов.
+         */
         WasteLog log = WasteLog.builder()
                 .user(user)
                 .ecoPointContainer(container)
                 .scannedAt(LocalDateTime.now())
-                .ecoCoinsEarned(earnedCoins)
+                .ecoCoinsEarned(0)
                 .build();
-        wasteLogRepo.save(log);
 
-        return wasteLogMapper.toDto(log);
-    }
-}
+        log = wasteLogRepository.save(log);
 
-========================================
-File: ./green/src/main/java/com/example/green/service/EcoRewardService.java
-========================================
+        RewardResult reward =
+                gamificationService.rewardForWasteDeposit(
+                        user.getId(),
+                        log.getId(),
+                        request.getWasteWeightGrams(),
+                        container.getWasteType()
+                );
 
-package com.example.green.service;
+        log.setEcoCoinsEarned(
+                Math.toIntExact(reward.ecoCoinsEarned())
+        );
 
-import com.example.green.domain.entity.EcoTransaction;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.enums.EcoTransactionSource;
-import com.example.green.domain.repository.EcoTransactionRepository;
-import com.example.green.domain.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+        WasteLog savedLog = wasteLogRepository.save(log);
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
+        EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
 
-@Service
-@RequiredArgsConstructor
-public class EcoRewardService {
+        messagingTemplate.convertAndSend(
+                "/topic/eco-containers",
+                containerDto
+        );
 
-    private static final BigDecimal CO2_KG_PER_KM = BigDecimal.valueOf(0.12); // экономия на 1 пассажира на 1 км
-    private static final long COINS_PER_KM = 2;
+        if (newFullness >= 90) {
+            messagingTemplate.convertAndSend(
+                    "/topic/admin/alerts",
+                    "Container ID " + container.getId()
+                            + " is " + newFullness
+                            + "% full"
+            );
+        }
 
-    private final UserRepository userRepository;
-    private final EcoTransactionRepository ecoTransactionRepository;
-
-    public void rewardForTripDistance(User user, double distanceKm, Long tripId) {
-        if (distanceKm <= 0) return;
-
-        BigDecimal co2Saved = CO2_KG_PER_KM
-                .multiply(BigDecimal.valueOf(distanceKm))
-                .setScale(3, RoundingMode.HALF_UP);
-        long coins = Math.round(distanceKm * COINS_PER_KM);
-
-        user.setEcoCoinsBalance(user.getEcoCoinsBalance() + coins);
-        user.setTotalCo2Saved(user.getTotalCo2Saved().add(co2Saved));
-        userRepository.save(user);
-
-        ecoTransactionRepository.save(EcoTransaction.builder()
-                .user(user)
-                .source(EcoTransactionSource.TRIP_COMPLETED)
-                .referenceId(tripId)
-                .ecoCoinsDelta(coins)
-                .co2SavedDelta(co2Saved)
-                .createdAt(LocalDateTime.now())
-                .build());
+        return wasteLogMapper.toDto(savedLog);
     }
 }
 
@@ -3891,53 +4748,353 @@ File: ./green/src/main/java/com/example/green/service/GamificationService.java
 
 package com.example.green.service;
 
+import com.example.green.api.dto.response.*;
 import com.example.green.api.error.ResourceNotFoundException;
-import com.example.green.domain.entity.EcoTransaction;
-import com.example.green.domain.entity.User;
-import com.example.green.domain.enums.EcoTransactionSource;
-import com.example.green.domain.repository.EcoTransactionRepository;
-import com.example.green.domain.repository.UserRepository;
+import com.example.green.api.mapper.GamificationMapper;
+import com.example.green.config.GamificationProperties;
+import com.example.green.domain.entity.*;
+import com.example.green.domain.enums.*;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
 public class GamificationService {
+    private static final List<Role> RANKED_ROLES = List.of(Role.STUDENT, Role.EMPLOYEE);
     private final UserRepository userRepository;
     private final EcoTransactionRepository ecoTransactionRepository;
+    private final UserAchievementRepository userAchievementRepository;
+    private final CurrentUserService currentUserService;
+    private final GamificationMapper gamificationMapper;
+    private final GamificationProperties properties;
 
     @Transactional
-    public int processDepositRewards(Long userId, Long containerId, Integer wasteWeightGrams) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+    public RewardResult rewardForCompletedTrip(Long userId, Long tripId, double distanceKm) {
+        if (distanceKm <= 0) {
+            throw new IllegalArgumentException("Trip distance must be greater than zero");
+        }
 
-        // 积分与ESG计算规则 (示例：每100g = 1 EcoCoin, 每次成功投递 +1 ESG)
-        int ecoCoinsEarned = Math.max(1, wasteWeightGrams / 100);
-        int esgIncrease = 1;
-        BigDecimal co2Saved = BigDecimal.valueOf(wasteWeightGrams * 0.005); // 碳减排计算系数
+        BigDecimal distance = BigDecimal.valueOf(distanceKm);
+        long coins = distance
+                .multiply(properties.getTrip().getCoinsPerKm())
+                .setScale(0, RoundingMode.HALF_UP)
+                .max(BigDecimal.ONE)
+                .longValueExact();
 
-        // 更新用户信息
-        user.setEcoCoinsBalance(user.getEcoCoinsBalance() + ecoCoinsEarned);
-        user.setEsgRating(Math.min(100, user.getEsgRating() + esgIncrease)); // ESG 封顶100
-        user.setTotalCo2Saved(user.getTotalCo2Saved().add(co2Saved));
+        BigDecimal co2Saved = distance.multiply(properties.getTrip().getCo2KgPerPassengerKm()).setScale(3, RoundingMode.HALF_UP);
+        return applyReward(
+                userId,
+                EcoTransactionSource.TRIP_COMPLETED,
+                tripId,
+                coins,
+                properties.getTrip().getEsgPerCompletedTrip(),
+                co2Saved
+        );
+    }
+
+    @Transactional
+    public RewardResult rewardForWasteDeposit(Long userId, Long wasteLogId, int wasteWeightGrams, WasteType wasteType) {
+        if (wasteWeightGrams <= 0) {
+            throw new IllegalArgumentException("Waste weight must be greater than zero");
+        }
+        int gramsPerCoin = properties.getWaste().getGramsPerCoin();
+        long coins = Math.max(1, wasteWeightGrams / gramsPerCoin);
+        BigDecimal weightKg = BigDecimal.valueOf(wasteWeightGrams)
+                .divide(BigDecimal.valueOf(1000), 6, RoundingMode.HALF_UP);
+        BigDecimal co2Saved = weightKg
+                .multiply(properties.getWaste().co2Coefficient(wasteType))
+                .setScale(3, RoundingMode.HALF_UP);
+
+        return applyReward(
+                userId,
+                EcoTransactionSource.WASTE_DEPOSIT,
+                wasteLogId,
+                coins,
+                properties.getWaste().getEsgPerDeposit(),
+                co2Saved
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isRecommended(User user) {
+        return user.getEsgRating() != null
+                && user.getEsgRating()
+                >= properties.getRecommendedEsgThreshold();
+    }
+
+    @Transactional(readOnly = true)
+    public GamificationProfileResponseDto getMyProfile() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        Long rank = isRankedRole(user.getRole()) ? calculateRank(user) : null;
+        long achievementCount = userAchievementRepository.countByUserId(user.getId());
+        return gamificationMapper.toGamificationProfileDto(user, rank, achievementCount);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EcoTransactionResponseDto> getMyHistory(int page, int size) {
+        User user = currentUserService.getCurrentUserOrThrow();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return ecoTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable)
+                .map(gamificationMapper::toEcoTransactionDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AchievementResponseDto> getMyAchievements() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        Map<AchievementCode, UserAchievement> unlocked = userAchievementRepository
+                        .findByUserIdOrderByUnlockedAtAsc(user.getId())
+                        .stream()
+                        .collect(Collectors.toMap(UserAchievement::getCode, Function.identity()));
+
+        return Arrays.stream(AchievementCode.values())
+                .map(code -> gamificationMapper.toAchievementDto(code, unlocked.get(code)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LeaderboardEntryResponseDto> getLeaderboard(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(
+                        Sort.Order.desc("esgRating"), Sort.Order.desc("ecoCoinsBalance"),
+                        Sort.Order.desc("totalCo2Saved"), Sort.Order.asc("id")
+                )
+        );
+
+        Page<User> users = userRepository.findByRoleIn(RANKED_ROLES, pageable);
+        long firstRank = pageable.getOffset() + 1;
+        List<LeaderboardEntryResponseDto> content = IntStream.range(0, users.getContent().size())
+                .mapToObj(index ->
+                                gamificationMapper.toLeaderboardDto(
+                                        users.getContent().get(index),
+                                        firstRank + index
+                                )
+                        )
+                        .toList();
+
+        return new PageImpl<>(content, pageable, users.getTotalElements());
+    }
+
+    private RewardResult applyReward(
+            Long userId,
+            EcoTransactionSource source,
+            Long referenceId,
+            long ecoCoinsDelta,
+            int requestedEsgDelta,
+            BigDecimal co2Delta
+    ) {
+        if (referenceId == null || referenceId <= 0) {
+            throw new IllegalArgumentException("Reward referenceId must be positive");
+        }
+
+        User user = userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+
+        Optional<EcoTransaction> existing =
+                ecoTransactionRepository
+                        .findByUserIdAndSourceAndReferenceId(
+                                userId,
+                                source,
+                                referenceId
+                        );
+
+        if (existing.isPresent()) {
+            EcoTransaction transaction = existing.get();
+
+            return new RewardResult(
+                    transaction.getEcoCoinsDelta(),
+                    transaction.getEsgRatingDelta(),
+                    zeroIfNull(transaction.getCo2SavedDelta()),
+                    false,
+                    List.of()
+            );
+        }
+
+        long newBalance = Math.addExact(user.getEcoCoinsBalance(), ecoCoinsDelta);
+
+        int oldEsg = user.getEsgRating();
+        int newEsg = Math.min(100, oldEsg + requestedEsgDelta);
+        int actualEsgDelta = newEsg - oldEsg;
+
+        BigDecimal normalizedCo2 = zeroIfNull(co2Delta)
+                        .setScale(
+                                3,
+                                RoundingMode.HALF_UP
+                        );
+
+        user.setEcoCoinsBalance(newBalance);
+        user.setEsgRating(newEsg);
+        user.setTotalCo2Saved(
+                user.getTotalCo2Saved()
+                        .add(normalizedCo2)
+        );
+
         userRepository.save(user);
 
-        // 写入交易记录
-        EcoTransaction tx = EcoTransaction.builder()
-                .user(user)
-                .source(EcoTransactionSource.WASTE_DEPOSIT)
-                .referenceId(containerId)
-                .ecoCoinsDelta((long) ecoCoinsEarned)
-                .co2SavedDelta(co2Saved)
-                .createdAt(LocalDateTime.now())
-                .build();
-        ecoTransactionRepository.save(tx);
+        EcoTransaction transaction =
+                EcoTransaction.builder()
+                        .user(user)
+                        .source(source)
+                        .referenceId(referenceId)
+                        .ecoCoinsDelta(ecoCoinsDelta)
+                        .esgRatingDelta(actualEsgDelta)
+                        .co2SavedDelta(normalizedCo2)
+                        .createdAt(LocalDateTime.now())
+                        .build();
 
-        return ecoCoinsEarned;
+        ecoTransactionRepository.saveAndFlush(transaction);
+
+        List<AchievementCode> unlocked = evaluateAchievements(user);
+
+        return new RewardResult(
+                ecoCoinsDelta,
+                actualEsgDelta,
+                normalizedCo2,
+                true,
+                unlocked
+        );
+    }
+
+    private List<AchievementCode> evaluateAchievements(User user) {
+        long totalActions = ecoTransactionRepository.countByUserId(user.getId());
+
+        long completedTrips = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.TRIP_COMPLETED);
+        long wasteDeposits = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.WASTE_DEPOSIT);
+
+        Set<AchievementCode> existingCodes =
+                userAchievementRepository
+                        .findByUserIdOrderByUnlockedAtAsc(
+                                user.getId()
+                        )
+                        .stream()
+                        .map(UserAchievement::getCode)
+                        .collect(Collectors.toSet());
+
+        List<UserAchievement> newEntities = new ArrayList<>();
+        unlockIfEligible(
+                totalActions >= 1,
+                AchievementCode.FIRST_ACTION,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                completedTrips >= 1,
+                AchievementCode.FIRST_SHARED_TRIP,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                completedTrips >= 10,
+                AchievementCode.CARPOOL_REGULAR,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                wasteDeposits >= 1,
+                AchievementCode.FIRST_WASTE_DEPOSIT,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                wasteDeposits >= 10,
+                AchievementCode.RECYCLING_REGULAR,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getEcoCoinsBalance() >= 100,
+                AchievementCode.ECOCOINS_100,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getEsgRating() >= 70,
+                AchievementCode.ESG_70,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        unlockIfEligible(
+                user.getTotalCo2Saved()
+                        .compareTo(BigDecimal.TEN) >= 0,
+                AchievementCode.CO2_10_KG,
+                user,
+                existingCodes,
+                newEntities
+        );
+
+        userAchievementRepository.saveAll(newEntities);
+
+        return newEntities.stream()
+                .map(UserAchievement::getCode)
+                .toList();
+    }
+
+    private void unlockIfEligible(
+            boolean eligible,
+            AchievementCode code,
+            User user,
+            Set<AchievementCode> existingCodes,
+            List<UserAchievement> newEntities
+    ) {
+        if (!eligible || !existingCodes.add(code)) {
+            return;
+        }
+
+        newEntities.add(
+                UserAchievement.builder()
+                        .user(user)
+                        .code(code)
+                        .unlockedAt(LocalDateTime.now())
+                        .build()
+        );
+    }
+
+    private Long calculateRank(User user) {
+        return userRepository.calculateRank(
+                RANKED_ROLES,
+                user.getId(),
+                user.getEsgRating(),
+                user.getEcoCoinsBalance(),
+                user.getTotalCo2Saved()
+        );
+    }
+
+    private boolean isRankedRole(Role role) {
+        return RANKED_ROLES.contains(role);
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null
+                ? BigDecimal.ZERO
+                : value;
     }
 }
 
@@ -3957,6 +5114,7 @@ import com.example.green.api.mapper.JobApplicationMapper;
 import com.example.green.domain.entity.JobApplication;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.CandidateSort;
 import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.JobApplicationRepository;
 import com.example.green.domain.repository.VacancyRepository;
@@ -3973,11 +5131,18 @@ public class JobApplicationService {
     private final VacancyRepository vacancyRepository;
     private final JobApplicationMapper jobApplicationMapper;
     private final CurrentUserService currentUserService;
+    private final GamificationService gamificationService;
 
     @Transactional
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
         User student = requireStudent();
         Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        if (!Boolean.TRUE.equals(vacancy.getIsActive())) {
+            throw new IllegalStateException("Vacancy is not active");
+        }
+        if (!Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy company is not a partner");
+        }
         if (jobApplicationRepository.existsByVacancyIdAndStudentId(vacancyId, student.getId())) {
             throw new IllegalStateException("Student already applied to this vacancy");
         }
@@ -3999,12 +5164,37 @@ public class JobApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<CandidateResponseDto> findCandidates(Long vacancyId) {
+    public List<CandidateResponseDto> findCandidates(Long vacancyId, CandidateSort sort) {
         Vacancy vacancy = getVacancyOrThrow(vacancyId);
         requireVacancyOwner(vacancy);
-        return jobApplicationRepository.findByVacancyIdOrderByAppliedAtDesc(vacancyId)
-                .stream()
-                .map(jobApplicationMapper::toCandidateDto)
+        CandidateSort effectiveSort = sort == null ? CandidateSort.ESG_DESC : sort;
+        List<JobApplication> applications = switch (effectiveSort) {
+            case ESG_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(
+                                    vacancyId
+                            );
+
+            case APPLIED_AT_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByAppliedAtDesc(vacancyId);
+        };
+        return applications.stream()
+                .map(application -> {
+                    Integer esg = application
+                            .getStudent()
+                            .getEsgRating();
+
+                    boolean recommended =
+                            gamificationService.isRecommended(
+                                    application.getStudent()
+                            );
+
+                    return jobApplicationMapper.toCandidateDto(
+                            application,
+                            recommended
+                    );
+                })
                 .toList();
     }
 
@@ -4014,7 +5204,14 @@ public class JobApplicationService {
         requireVacancyOwner(application.getVacancy());
         application.changeStatus(request.getStatus());
 
-        return jobApplicationMapper.toCandidateDto(jobApplicationRepository.save(application));
+        JobApplication saved = jobApplicationRepository.save(application);
+        Integer esg = saved.getStudent().getEsgRating();
+        boolean recommended =
+                gamificationService.isRecommended(
+                        saved.getStudent()
+                );
+
+        return jobApplicationMapper.toCandidateDto(saved, recommended);
     }
 
     private User requireStudent() {
@@ -4133,9 +5330,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ProfileService {
     private final ProfileRepository profileRepository;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
     private final ProfileMapper profileMapper;
 
+    @Transactional(readOnly = true)
+    public ProfileResponseDto getMyProfile() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        return getByUserId(user.getId());
+    }
     @Transactional(readOnly = true)
     public ProfileResponseDto getByUserId(Long userId) {
         Profile profile = profileRepository.findByUserId(userId)
@@ -4144,17 +5346,21 @@ public class ProfileService {
     }
 
     @Transactional
-    public ProfileResponseDto upsertByUserId(Long userId, ProfileRequestDto request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+    public ProfileResponseDto upsertMyProfile(ProfileRequestDto request) {
+        User user = currentUserService.getCurrentUserOrThrow();
 
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseGet(() -> Profile.builder().user(user).build());
-
+        Profile profile = profileRepository
+                .findByUserId(user.getId())
+                .orElseGet(() -> Profile.builder()
+                                .user(user)
+                                .build()
+                );
 
         profileMapper.updateEntity(profile, request);
-        Profile saved = profileRepository.save(profile);
-        return profileMapper.toDto(saved);
+
+        return profileMapper.toDto(
+                profileRepository.save(profile)
+        );
     }
 }
 
@@ -4400,7 +5606,7 @@ public class TripService {
     private final TripMapper tripMapper;
     private final GeometryMapper geometryMapper;
     private final TripParticipantRepository tripParticipantRepository;
-    private final EcoRewardService ecoRewardService;
+    private final GamificationService gamificationService;
     private final CurrentUserService currentUserService;
 
     public List<TripResponseDto> findAllTrips() {
@@ -4533,15 +5739,30 @@ public class TripService {
                     "Trip cannot be completed before departure time"
             );
         }
+
         trip.changeStatus(TripStatus.COMPLETED);
         tripRepository.save(trip);
 
-        double distanceKm = GeoUtils.distanceKm(trip.getDepartureLocation(), trip.getDestinationLocation());
+        double distanceKm = GeoUtils.distanceKm(
+                trip.getDepartureLocation(),
+                trip.getDestinationLocation()
+        );
 
-        ecoRewardService.rewardForTripDistance(trip.getDriver(), distanceKm, trip.getId());
+        gamificationService.rewardForCompletedTrip(
+                trip.getDriver().getId(),
+                trip.getId(),
+                distanceKm
+        );
 
-        tripParticipantRepository.findByTripIdAndIsCancelledFalse(trip.getId())
-                .forEach(p -> ecoRewardService.rewardForTripDistance(p.getPassenger(), distanceKm, trip.getId()));
+        tripParticipantRepository
+                .findByTripIdAndIsCancelledFalse(trip.getId())
+                .forEach(participant ->
+                        gamificationService.rewardForCompletedTrip(
+                                participant.getPassenger().getId(),
+                                trip.getId(),
+                                distanceKm
+                        )
+                );
 
         return tripMapper.toDto(trip);
     }
@@ -4599,45 +5820,72 @@ import com.example.green.api.dto.response.UserResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.UserMapper;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final CurrentUserService currentUserService;
 
+    @Transactional(readOnly = true)
     public List<UserResponseDto> findAll() {
-        return userRepository.findAll().stream()
+        return userRepository.findAll()
+                .stream()
                 .map(userMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public UserResponseDto findById(Long id) {
-        return userMapper.toDto(getUserOrThrow(id));
+        return userMapper.toDto(
+                getUserOrThrow(id)
+        );
     }
 
-    public UserResponseDto create(UserRequestDto request) {
-        User saved = userRepository.save(userMapper.toEntity(request));
-        return userMapper.toDto(saved);
-    }
-
+    @Transactional
     public UserResponseDto update(Long id, UserRequestDto request) {
-        User entity = getUserOrThrow(id);
-        userMapper.updateEntity(entity, request);
-        User saved = userRepository.save(entity);
-        return userMapper.toDto(saved);
+        User currentAdmin = currentUserService.getCurrentUserOrThrow();
+        User target = getUserOrThrow(id);
+
+        boolean removesAdminRole = target.getRole() == Role.ADMIN && request.getRole() != Role.ADMIN;
+
+        if (removesAdminRole && userRepository.countByRole(Role.ADMIN) <= 1) {
+            throw new IllegalStateException("The last administrator cannot be demoted");
+        }
+        if (currentAdmin.getId().equals(target.getId()) && request.getRole() != Role.ADMIN) {
+            throw new IllegalStateException("Administrator cannot demote their own account");
+        }
+
+            userMapper.updateEntity(target, request);
+
+        return userMapper.toDto(
+                userRepository.save(target)
+        );
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found: id=" + id);
+        User currentAdmin = currentUserService.getCurrentUserOrThrow();
+        User target = getUserOrThrow(id);
+
+        if (currentAdmin.getId().equals(target.getId())) {
+            throw new IllegalStateException("Administrator cannot delete their own account");
         }
-        userRepository.deleteById(id);
+
+        if (target.getRole() == Role.ADMIN && userRepository.countByRole(Role.ADMIN) <= 1) {
+            throw new IllegalStateException("The last administrator cannot be deleted");
+        }
+
+        userRepository.delete(target);
     }
 
     private User getUserOrThrow(Long id) {
@@ -4645,7 +5893,6 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/util/GeoUtils.java
@@ -4727,9 +5974,10 @@ public class VacancyService {
 
     @Transactional(readOnly = true)
     public VacancyResponseDto findById(Long id) {
-        return vacancyMapper.toDto(
-                getVacancyOrThrow(id)
-        );
+        Vacancy vacancy = vacancyRepository
+                .findByIdAndIsActiveTrueAndCompany_IsPartnerTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Published vacancy not found: id=" + id));
+        return vacancyMapper.toDto(vacancy);
     }
 
     @Transactional(readOnly = true)
@@ -4748,6 +5996,7 @@ public class VacancyService {
     public VacancyResponseDto create(VacancyRequestDto request) {
         User hr = requireHr();
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         Vacancy vacancy = vacancyMapper.toEntity(request, hr, company);
 
@@ -4759,6 +6008,7 @@ public class VacancyService {
         Vacancy vacancy = getVacancyOrThrow(id);
         User hr = requireVacancyOwner(vacancy);
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         vacancyMapper.updateEntity(vacancy, request, company);
 
@@ -4779,6 +6029,8 @@ public class VacancyService {
     private Specification<Vacancy> buildSpecification(VacancySearchRequestDto request) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isTrue(root.get("isActive")));
+            predicates.add(cb.isTrue(root.get("company").get("isPartner")));
 
             if (request.getQuery() != null && !request.getQuery().isBlank()) {
                 String pattern = "%" + request.getQuery().toLowerCase().trim() + "%";
@@ -4837,6 +6089,12 @@ public class VacancyService {
             throw new ForbiddenException("HR cannot create vacancy for another company");
         }
     }
+
+    private void requirePartnerCompany(Company company) {
+        if (!Boolean.TRUE.equals(company.getIsPartner())) {
+            throw new IllegalStateException("Only partner companies can publish vacancies");
+        }
+    }
 }
 
 ========================================
@@ -4845,18 +6103,14 @@ File: ./green/src/main/java/com/example/green/service/WasteLogService.java
 
 package com.example.green.service;
 
-import com.example.green.api.dto.request.WasteLogRequestDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.WasteLogMapper;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.WasteLog;
-import com.example.green.domain.repository.EcoPointContainerRepository;
-import com.example.green.domain.repository.UserRepository;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -4864,60 +6118,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WasteLogService {
     private final WasteLogRepository wasteLogRepository;
-    private final UserRepository userRepository;
-    private final EcoPointContainerRepository ecoPointContainerRepository;
     private final WasteLogMapper wasteLogMapper;
 
+    @Transactional(readOnly = true)
     public List<WasteLogResponseDto> findAll() {
         return wasteLogRepository.findAll().stream()
                 .map(wasteLogMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public WasteLogResponseDto findById(Long id) {
         return wasteLogMapper.toDto(getWasteLogOrThrow(id));
-    }
-
-    public WasteLogResponseDto create(WasteLogRequestDto request) {
-        User user = getUserOrThrow(request.getUserId());
-        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
-        WasteLog saved = wasteLogRepository.save(wasteLogMapper.toEntity(request, user, ecoPointContainer));
-        return wasteLogMapper.toDto(saved);
-    }
-
-    public WasteLogResponseDto update(Long id, WasteLogRequestDto request) {
-        WasteLog entity = getWasteLogOrThrow(id);
-        User user = getUserOrThrow(request.getUserId());
-        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
-        wasteLogMapper.updateEntity(entity, request, user, ecoPointContainer);
-        WasteLog saved = wasteLogRepository.save(entity);
-        return wasteLogMapper.toDto(saved);
-    }
-
-    public void delete(Long id) {
-        if (!wasteLogRepository.existsById(id)) {
-            throw new ResourceNotFoundException("WasteLog not found: id=" + id);
-        }
-        wasteLogRepository.deleteById(id);
     }
 
     private WasteLog getWasteLogOrThrow(Long id) {
         return wasteLogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WasteLog not found: id=" + id));
     }
-
-    private User getUserOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
-    }
-
-    private EcoPointContainer getEcoPointOrThrow(Long id) {
-        return ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
-    }
 }
-
-
 
 ========================================
 File: ./green/src/main/resources/application-dev.yaml
@@ -4928,6 +6147,21 @@ app:
     jwt-secret: "replace-with-very-long-secret-key-at-least-32-chars"
     access-ttl-seconds: 900
     refresh-ttl-seconds: 1209600
+  gamification:
+    recommended-esg-threshold: 70
+
+    trip:
+      coins-per-km: 2
+      co2-kg-per-passenger-km: 0.12
+      esg-per-completed-trip: 2
+
+    waste:
+      grams-per-coin: 100
+      esg-per-deposit: 1
+      plastic-co2-kg-per-kg: 1.5
+      paper-co2-kg-per-kg: 0.9
+      glass-co2-kg-per-kg: 0.3
+      battery-co2-kg-per-kg: 2.0
 server:
   port: 65535
 spring: #application in dev mode
@@ -5066,19 +6300,54 @@ CREATE TABLE waste_logs (
     CONSTRAINT chk_waste_logs_eco_coins_non_negative CHECK (eco_coins_earned >= 0)
 );
 
+CREATE TABLE companies (
+    id BIGSERIAL PRIMARY KEY,
+    hr_manager_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    website VARCHAR(500),
+    is_partner BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_companies_hr_manager
+        FOREIGN KEY (hr_manager_id)
+            REFERENCES users(id),
+
+    CONSTRAINT uk_company_hr_name
+        UNIQUE (hr_manager_id, name),
+
+    CONSTRAINT chk_companies_name_not_blank
+        CHECK (btrim(name) <> '')
+);
+
+CREATE INDEX idx_companies_hr_manager
+    ON companies(hr_manager_id);
+
+
 CREATE TABLE vacancies (
     id BIGSERIAL PRIMARY KEY,
     hr_manager_id BIGINT NOT NULL,
-    company_name VARCHAR(255) NOT NULL,
+    company_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    is_partner_vacancy BOOLEAN NOT NULL,
 
-    CONSTRAINT fk_vacancies_hr_manager FOREIGN KEY (hr_manager_id) REFERENCES users(id),
-    CONSTRAINT chk_vacancies_company_not_blank CHECK (btrim(company_name) <> ''),
-    CONSTRAINT chk_vacancies_title_not_blank CHECK (btrim(title) <> ''),
-    CONSTRAINT chk_vacancies_description_not_blank CHECK (btrim(description) <> '')
+    CONSTRAINT fk_vacancies_hr_manager
+        FOREIGN KEY (hr_manager_id)
+            REFERENCES users(id),
+
+    CONSTRAINT fk_vacancies_company
+        FOREIGN KEY (company_id)
+            REFERENCES companies(id),
+
+    CONSTRAINT chk_vacancies_title_not_blank
+        CHECK (btrim(title) <> ''),
+
+    CONSTRAINT chk_vacancies_description_not_blank
+        CHECK (btrim(description) <> '')
 );
+
+CREATE INDEX idx_vacancies_company
+    ON vacancies(company_id);
+
 
 CREATE TABLE job_applications (
     id BIGSERIAL PRIMARY KEY,
@@ -5088,16 +6357,34 @@ CREATE TABLE job_applications (
     cover_letter TEXT NOT NULL,
     job_status VARCHAR(20) NOT NULL,
 
-    CONSTRAINT fk_job_applications_vacancy FOREIGN KEY (vacancy_id) REFERENCES vacancies(id),
-    CONSTRAINT fk_job_applications_student FOREIGN KEY (student_id) REFERENCES users(id),
-    CONSTRAINT uk_job_application_vacancy_student UNIQUE (vacancy_id, student_id),
-    CONSTRAINT chk_job_applications_cover_letter_len CHECK (char_length(cover_letter) BETWEEN 10 AND 5000),
-    CONSTRAINT chk_job_applications_status_values CHECK (job_status IN ('PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED'))
+    CONSTRAINT fk_job_applications_vacancy
+        FOREIGN KEY (vacancy_id)
+            REFERENCES vacancies(id),
+
+    CONSTRAINT fk_job_applications_student
+        FOREIGN KEY (student_id)
+            REFERENCES users(id),
+
+    CONSTRAINT uk_job_application_vacancy_student
+        UNIQUE (vacancy_id, student_id),
+
+    CONSTRAINT chk_job_applications_cover_letter_len
+        CHECK (char_length(cover_letter) BETWEEN 10 AND 5000),
+
+    CONSTRAINT chk_job_applications_status_values
+        CHECK (
+            job_status IN (
+                'PENDING',
+                'REVIEWED',
+                'ACCEPTED',
+                'REJECTED'
+            )
+        )
 );
 
-CREATE INDEX idx_trips_status_time ON trips (trip_status, departure_time);
-CREATE INDEX idx_container_waste_type ON eco_point_containers (waste_type);
-CREATE INDEX idx_job_app_status ON job_applications (job_status);
+CREATE INDEX idx_job_app_status ON job_applications(job_status);
+CREATE INDEX idx_job_app_student ON job_applications(student_id);
+CREATE INDEX idx_job_app_vacancy ON job_applications(vacancy_id);
 
 ========================================
 File: ./green/src/main/resources/db/migration/V2__auth_schema.sql
@@ -5181,61 +6468,80 @@ ALTER TABLE trips
     ALTER COLUMN destination_location SET NOT NULL;
 
 ========================================
-File: ./green/src/main/resources/db/migration/V7__career_hub.sql
+File: ./green/src/main/resources/db/migration/V7__complete_gamification.sql
 ========================================
 
-CREATE TABLE companies (
+ALTER TABLE eco_transactions
+    ADD COLUMN esg_rating_delta INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE eco_transactions
+    ADD CONSTRAINT chk_eco_transactions_source
+        CHECK (
+            source IN (
+                       'TRIP_COMPLETED',
+                       'WASTE_DEPOSIT',
+                       'ADMIN_ADJUSTMENT'
+                )
+            );
+
+CREATE UNIQUE INDEX uk_eco_transactions_reward
+    ON eco_transactions(user_id, source, reference_id)
+    WHERE reference_id IS NOT NULL;
+
+
+CREATE TABLE user_achievements (
     id BIGSERIAL PRIMARY KEY,
-    hr_manager_id BIGINT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    website VARCHAR(500),
-    is_partner BOOLEAN NOT NULL DEFAULT FALSE,
+    user_id BIGINT NOT NULL,
+    achievement_code VARCHAR(50) NOT NULL,
+    unlocked_at TIMESTAMP NOT NULL,
 
-    CONSTRAINT fk_companies_hr_manager
-        FOREIGN KEY (hr_manager_id)
-        REFERENCES users(id),
+    CONSTRAINT fk_user_achievements_user
+        FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON DELETE CASCADE,
 
-    CONSTRAINT uk_company_hr_name
-        UNIQUE (hr_manager_id, name),
+    CONSTRAINT uk_user_achievement
+        UNIQUE (user_id, achievement_code),
 
-    CONSTRAINT chk_companies_name_not_blank
-        CHECK (btrim(name) <> '')
+    CONSTRAINT chk_achievement_code
+        CHECK (
+            achievement_code IN (
+                'FIRST_ACTION',
+                'FIRST_SHARED_TRIP',
+                'CARPOOL_REGULAR',
+                'FIRST_WASTE_DEPOSIT',
+                'RECYCLING_REGULAR',
+                'ECOCOINS_100',
+                'ESG_70',
+                'CO2_10_KG'
+            )
+        )
 );
 
-CREATE INDEX idx_companies_hr_manager
-    ON companies(hr_manager_id);
+CREATE INDEX idx_user_achievements_user
+    ON user_achievements(user_id);
 
+CREATE INDEX idx_users_leaderboard
+    ON users(
+             esg_rating DESC,
+             eco_coins_balance DESC,
+             total_co2_saved DESC,
+             id ASC
+        )
+    WHERE role IN ('STUDENT', 'EMPLOYEE');
 
-ALTER TABLE vacancies
-    ADD COLUMN company_id BIGINT;
-
-ALTER TABLE vacancies
-    ALTER COLUMN company_id SET NOT NULL;
-
-
-ALTER TABLE vacancies
-    ADD CONSTRAINT fk_vacancies_company
-        FOREIGN KEY (company_id)
-            REFERENCES companies(id);
-
-
-CREATE INDEX idx_vacancies_company
-    ON vacancies(company_id);
-
+========================================
+File: ./green/src/main/resources/db/migration/V8__admin_panel.sql
+========================================
 
 ALTER TABLE vacancies
-    DROP COLUMN company_name;
+    ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
 
-ALTER TABLE vacancies
-    DROP COLUMN is_partner_vacancy;
+CREATE INDEX idx_vacancies_active
+    ON vacancies(is_active);
 
-
-CREATE INDEX idx_job_app_student
-    ON job_applications(student_id);
-
-CREATE INDEX idx_job_app_vacancy
-    ON job_applications(vacancy_id);
+CREATE INDEX idx_containers_admin_monitoring
+    ON eco_point_containers(is_active, fullness_percentage);
 
 ========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java
@@ -5253,4 +6559,702 @@ class GreenApplicationTests {
     void contextLoads() {
     }
 
+}
+
+
+========================================
+File: ./green/src/test/java/com/example/green/service/CompanyServiceTest.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.request.CompanyPartnerStatusRequestDto;
+import com.example.green.api.dto.request.CompanyRequestDto;
+import com.example.green.api.error.ForbiddenException;
+import com.example.green.api.mapper.CompanyMapper;
+import com.example.green.domain.entity.Company;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.CompanyRepository;
+import com.example.green.domain.repository.VacancyRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+class CompanyServiceTest {
+
+    @Mock
+    private CompanyRepository companyRepository;
+
+    @Mock
+    private VacancyRepository vacancyRepository;
+
+    @Mock
+    private CurrentUserService currentUserService;
+
+    @Spy
+    private CompanyMapper companyMapper = new CompanyMapper();
+
+    @InjectMocks
+    private CompanyService companyService;
+
+    @Test
+    void createShouldAlwaysCreateNonPartnerCompany() {
+        User hr = user(1L, Role.HR);
+
+        CompanyRequestDto request = CompanyRequestDto.builder()
+                .name("Green Company")
+                .description("Description")
+                .website("https://example.com")
+                .build();
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(hr);
+
+        when(companyRepository.existsByHrManagerIdAndNameIgnoreCase(
+                1L,
+                "Green Company"
+        )).thenReturn(false);
+
+        when(companyRepository.save(any(Company.class)))
+                .thenAnswer(invocation -> {
+                    Company company = invocation.getArgument(0);
+                    company.setId(10L);
+                    return company;
+                });
+
+        var response = companyService.create(request);
+
+        assertFalse(response.getIsPartner());
+        assertEquals(1L, response.getHrManagerId());
+    }
+
+    @Test
+    void updateShouldPreservePartnerStatus() {
+        User hr = user(1L, Role.HR);
+
+        Company company = Company.builder()
+                .id(10L)
+                .hrManager(hr)
+                .name("Old name")
+                .isPartner(true)
+                .build();
+
+        CompanyRequestDto request = CompanyRequestDto.builder()
+                .name("New name")
+                .build();
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(hr);
+
+        when(companyRepository.findById(10L))
+                .thenReturn(java.util.Optional.of(company));
+
+        when(companyRepository.save(company))
+                .thenReturn(company);
+
+        var response = companyService.update(10L, request);
+
+        assertEquals("New name", response.getName());
+        assertTrue(response.getIsPartner());
+    }
+
+    @Test
+    void hrShouldNotChangePartnerStatus() {
+        User hr = user(1L, Role.HR);
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(hr);
+
+        var request =
+                new CompanyPartnerStatusRequestDto(true);
+
+        assertThrows(
+                ForbiddenException.class,
+                () -> companyService.changePartnerStatus(
+                        10L,
+                        request
+                )
+        );
+
+        verify(companyRepository, never()).save(any());
+    }
+
+    @Test
+    void adminShouldChangePartnerStatus() {
+        User admin = user(1L, Role.ADMIN);
+        User hr = user(2L, Role.HR);
+
+        Company company = Company.builder()
+                .id(10L)
+                .hrManager(hr)
+                .name("Company")
+                .isPartner(false)
+                .build();
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(admin);
+
+        when(companyRepository.findById(10L))
+                .thenReturn(java.util.Optional.of(company));
+
+        when(companyRepository.save(company))
+                .thenReturn(company);
+
+        var response = companyService.changePartnerStatus(
+                10L,
+                new CompanyPartnerStatusRequestDto(true)
+        );
+
+        assertTrue(response.getIsPartner());
+    }
+
+    private User user(Long id, Role role) {
+        return User.builder()
+                .id(id)
+                .email("user" + id + "@test.com")
+                .fullName("Test User")
+                .role(role)
+                .passwordHash("x".repeat(60))
+                .ecoCoinsBalance(0L)
+                .esgRating(0)
+                .totalCo2Saved(BigDecimal.ZERO)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+}
+
+========================================
+File: ./green/src/test/java/com/example/green/service/GamificationIntegrationTest.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.response.GamificationProfileResponseDto;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.AchievementCode;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.enums.WasteType;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.EcoTransactionRepository;
+import com.example.green.domain.repository.UserAchievementRepository;
+import com.example.green.domain.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+@SpringBootTest
+@Testcontainers
+class GamificationIntegrationTest {
+
+    private static final DockerImageName POSTGIS_IMAGE =
+            DockerImageName.parse("postgis/postgis:16-3.4")
+                    .asCompatibleSubstituteFor("postgres");
+
+    @Container
+    static final PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>(POSTGIS_IMAGE)
+                    .withDatabaseName("green_test")
+                    .withUsername("green_test")
+                    .withPassword("green_test");
+
+    @DynamicPropertySource
+    static void configureDatabase(DynamicPropertyRegistry registry) {
+        registry.add(
+                "spring.datasource.url",
+                postgres::getJdbcUrl
+        );
+        registry.add(
+                "spring.datasource.username",
+                postgres::getUsername
+        );
+        registry.add(
+                "spring.datasource.password",
+                postgres::getPassword
+        );
+        registry.add(
+                "spring.jpa.hibernate.ddl-auto",
+                () -> "validate"
+        );
+        registry.add(
+                "spring.flyway.enabled",
+                () -> true
+        );
+    }
+
+    @Autowired
+    private GamificationService gamificationService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private EcoTransactionRepository ecoTransactionRepository;
+
+    @Autowired
+    private UserAchievementRepository userAchievementRepository;
+
+    @MockBean
+    private CurrentUserService currentUserService;
+
+    @BeforeEach
+    void cleanDatabase() {
+        userAchievementRepository.deleteAllInBatch();
+        ecoTransactionRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void completedTripShouldUpdateUserAndCreateTransaction() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(result.applied());
+        assertEquals(20L, result.ecoCoinsEarned());
+        assertEquals(2, result.esgRatingEarned());
+        assertEquals(
+                new BigDecimal("1.200"),
+                result.co2Saved()
+        );
+
+        assertEquals(20L, updated.getEcoCoinsBalance());
+        assertEquals(2, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("1.200"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertEquals(1, ecoTransactionRepository.count());
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_ACTION
+                )
+        );
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_SHARED_TRIP
+                )
+        );
+    }
+
+    @Test
+    void sameTripShouldNotGiveRewardTwice() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult first =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        RewardResult second =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(first.applied());
+        assertFalse(second.applied());
+
+        assertEquals(20L, updated.getEcoCoinsBalance());
+        assertEquals(2, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("1.200"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertEquals(1, ecoTransactionRepository.count());
+    }
+
+    @Test
+    void wasteDepositShouldUpdateGamificationData() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForWasteDeposit(
+                        user.getId(),
+                        200L,
+                        250,
+                        WasteType.PLASTIC
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(result.applied());
+        assertEquals(2L, result.ecoCoinsEarned());
+        assertEquals(1, result.esgRatingEarned());
+        assertEquals(
+                new BigDecimal("0.375"),
+                result.co2Saved()
+        );
+
+        assertEquals(2L, updated.getEcoCoinsBalance());
+        assertEquals(1, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("0.375"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_WASTE_DEPOSIT
+                )
+        );
+    }
+
+    @Test
+    void esgRatingShouldNotExceedOneHundred() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                99,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        5.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertEquals(100, updated.getEsgRating());
+        assertEquals(1, result.esgRatingEarned());
+    }
+
+    @Test
+    void profileShouldCalculateCorrectLeaderboardRank() {
+        userRepository.save(user(
+                "leader@test.com",
+                Role.STUDENT,
+                90,
+                100L,
+                "5.000"
+        ));
+
+        User currentUser = userRepository.save(user(
+                "current@test.com",
+                Role.STUDENT,
+                70,
+                50L,
+                "2.000"
+        ));
+
+        userRepository.save(user(
+                "lower@test.com",
+                Role.EMPLOYEE,
+                40,
+                500L,
+                "20.000"
+        ));
+
+        // HR не должен участвовать в лидерборде
+        userRepository.save(user(
+                "hr@test.com",
+                Role.HR,
+                100,
+                1000L,
+                "100.000"
+        ));
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(currentUser);
+
+        GamificationProfileResponseDto profile =
+                gamificationService.getMyProfile();
+
+        assertEquals(2L, profile.getLeaderboardRank());
+    }
+
+    @Test
+    void leaderboardShouldSortAndExcludeHr() {
+        User second = userRepository.save(user(
+                "second@test.com",
+                Role.EMPLOYEE,
+                70,
+                100L,
+                "5.000"
+        ));
+
+        User first = userRepository.save(user(
+                "first@test.com",
+                Role.STUDENT,
+                90,
+                50L,
+                "2.000"
+        ));
+
+        userRepository.save(user(
+                "hr@test.com",
+                Role.HR,
+                100,
+                1000L,
+                "100.000"
+        ));
+
+        var leaderboard =
+                gamificationService.getLeaderboard(0, 20);
+
+        assertEquals(2, leaderboard.getTotalElements());
+
+        assertEquals(
+                first.getId(),
+                leaderboard.getContent().get(0).getUserId()
+        );
+
+        assertEquals(
+                second.getId(),
+                leaderboard.getContent().get(1).getUserId()
+        );
+
+        assertEquals(
+                1L,
+                leaderboard.getContent().get(0).getRank()
+        );
+
+        assertEquals(
+                2L,
+                leaderboard.getContent().get(1).getRank()
+        );
+    }
+
+    private User user(
+            String email,
+            Role role,
+            int esgRating,
+            long ecoCoins,
+            String co2
+    ) {
+        return User.builder()
+                .email(email)
+                .fullName("Test User")
+                .role(role)
+                .passwordHash("x".repeat(60))
+                .ecoCoinsBalance(ecoCoins)
+                .esgRating(esgRating)
+                .totalCo2Saved(new BigDecimal(co2))
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+}
+
+========================================
+File: ./green/src/test/java/com/example/green/service/JobApplicationServiceTest.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.mapper.JobApplicationMapper;
+import com.example.green.domain.entity.JobApplication;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.CandidateSort;
+import com.example.green.domain.enums.JobStatus;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.JobApplicationRepository;
+import com.example.green.domain.repository.VacancyRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+class JobApplicationServiceTest {
+
+    @Mock
+    private JobApplicationRepository jobApplicationRepository;
+
+    @Mock
+    private VacancyRepository vacancyRepository;
+
+    @Mock
+    private CurrentUserService currentUserService;
+
+    @Mock
+    private GamificationService gamificationService;
+
+    @Spy
+    private JobApplicationMapper jobApplicationMapper =
+            new JobApplicationMapper();
+
+    @InjectMocks
+    private JobApplicationService jobApplicationService;
+
+    @Test
+    void shouldReturnCandidatesSortedByEsgAndMarkRecommended() {
+        User hr = user(1L, Role.HR, 0);
+        User strongStudent = user(2L, Role.STUDENT, 85);
+        User regularStudent = user(3L, Role.STUDENT, 45);
+
+        Vacancy vacancy = Vacancy.builder()
+                .id(10L)
+                .hrManager(hr)
+                .title("Java Intern")
+                .description("Description")
+                .build();
+
+        JobApplication strong =
+                application(100L, vacancy, strongStudent);
+
+        JobApplication regular =
+                application(101L, vacancy, regularStudent);
+
+        when(gamificationService.isRecommended(strongStudent))
+                .thenReturn(true);
+
+        when(gamificationService.isRecommended(regularStudent))
+                .thenReturn(false);
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(hr);
+
+        when(vacancyRepository.findById(10L))
+                .thenReturn(Optional.of(vacancy));
+
+        when(jobApplicationRepository
+                .findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(10L))
+                .thenReturn(List.of(strong, regular));
+
+        var result = jobApplicationService.findCandidates(
+                10L,
+                CandidateSort.ESG_DESC
+        );
+
+        assertEquals(2, result.size());
+        assertEquals(85, result.get(0).getEsgRating());
+        assertTrue(result.get(0).getRecommended());
+        assertFalse(result.get(1).getRecommended());
+
+        verify(jobApplicationRepository)
+                .findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(10L);
+    }
+
+    @Test
+    void shouldUseAppliedAtSorting() {
+        User hr = user(1L, Role.HR, 0);
+
+        Vacancy vacancy = Vacancy.builder()
+                .id(10L)
+                .hrManager(hr)
+                .title("Java Intern")
+                .description("Description")
+                .build();
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(hr);
+
+        when(vacancyRepository.findById(10L))
+                .thenReturn(Optional.of(vacancy));
+
+        when(jobApplicationRepository
+                .findByVacancyIdOrderByAppliedAtDesc(10L))
+                .thenReturn(List.of());
+
+        jobApplicationService.findCandidates(
+                10L,
+                CandidateSort.APPLIED_AT_DESC
+        );
+
+        verify(jobApplicationRepository)
+                .findByVacancyIdOrderByAppliedAtDesc(10L);
+    }
+
+    private JobApplication application(
+            Long id,
+            Vacancy vacancy,
+            User student
+    ) {
+        return JobApplication.builder()
+                .id(id)
+                .vacancy(vacancy)
+                .student(student)
+                .appliedAt(LocalDateTime.now())
+                .coverLetter("Valid cover letter")
+                .jobStatus(JobStatus.PENDING)
+                .build();
+    }
+
+    private User user(Long id, Role role, int esg) {
+        return User.builder()
+                .id(id)
+                .email("user" + id + "@test.com")
+                .fullName("Test User " + id)
+                .role(role)
+                .passwordHash("x".repeat(60))
+                .ecoCoinsBalance(100L)
+                .esgRating(esg)
+                .totalCo2Saved(BigDecimal.ONE)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
 }

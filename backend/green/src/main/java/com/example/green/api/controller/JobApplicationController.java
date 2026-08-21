@@ -4,6 +4,7 @@ import com.example.green.api.dto.request.JobApplicationRequestDto;
 import com.example.green.api.dto.request.JobApplicationStatusRequestDto;
 import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.domain.enums.CandidateSort;
 import com.example.green.service.JobApplicationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -37,8 +38,8 @@ public class JobApplicationController {
     }
 
     @GetMapping("/vacancies/{vacancyId}/applications")
-    public List<CandidateResponseDto> candidates(@PathVariable @Positive Long vacancyId) {
-        return jobApplicationService.findCandidates(vacancyId);
+    public List<CandidateResponseDto> candidates(@PathVariable @Positive Long vacancyId, @RequestParam(defaultValue = "ESG_DESC") CandidateSort sort) {
+        return jobApplicationService.findCandidates(vacancyId, sort);
     }
 
     @PatchMapping("/applications/{applicationId}/status")

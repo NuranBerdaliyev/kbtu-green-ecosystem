@@ -6,4 +6,5 @@ import java.util.List;
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     List<Company> findByHrManagerIdOrderByNameAsc(Long hrManagerId);
     boolean existsByHrManagerIdAndNameIgnoreCase(Long hrManagerId, String name);
+    long countByIsPartnerTrue();
 }

@@ -17,9 +17,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ProfileService {
     private final ProfileRepository profileRepository;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
     private final ProfileMapper profileMapper;
 
+    @Transactional(readOnly = true)
+    public ProfileResponseDto getMyProfile() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        return getByUserId(user.getId());
+    }
     @Transactional(readOnly = true)
     public ProfileResponseDto getByUserId(Long userId) {
         Profile profile = profileRepository.findByUserId(userId)
@@ -28,16 +33,20 @@ public class ProfileService {
     }
 
     @Transactional
-    public ProfileResponseDto upsertByUserId(Long userId, ProfileRequestDto request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+    public ProfileResponseDto upsertMyProfile(ProfileRequestDto request) {
+        User user = currentUserService.getCurrentUserOrThrow();
 
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseGet(() -> Profile.builder().user(user).build());
-
+        Profile profile = profileRepository
+                .findByUserId(user.getId())
+                .orElseGet(() -> Profile.builder()
+                                .user(user)
+                                .build()
+                );
 
         profileMapper.updateEntity(profile, request);
-        Profile saved = profileRepository.save(profile);
-        return profileMapper.toDto(saved);
+
+        return profileMapper.toDto(
+                profileRepository.save(profile)
+        );
     }
 }

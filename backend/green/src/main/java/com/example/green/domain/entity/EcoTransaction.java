@@ -33,6 +33,10 @@ public class EcoTransaction {
     @Column(name = "eco_coins_delta", nullable = false)
     private Long ecoCoinsDelta;
 
+    @NotNull
+    @Column(name = "esg_rating_delta", nullable = false)
+    private Integer esgRatingDelta;
+
     @Column(name = "co2_saved_delta", precision = 15, scale = 3)
     private BigDecimal co2SavedDelta;
 

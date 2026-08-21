@@ -15,6 +15,4 @@ public class CompanyRequestDto {
 
     @Size(max = 500)
     private String website;
-
-    private Boolean isPartner;
 }
