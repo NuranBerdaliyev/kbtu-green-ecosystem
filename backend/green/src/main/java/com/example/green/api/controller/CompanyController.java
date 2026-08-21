@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -31,23 +32,28 @@ public class CompanyController {
         return companyService.findById(id);
     }
 
+
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<CompanyResponseDto> myCompanies() {
         return companyService.findMyCompanies();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto create(@Valid @RequestBody CompanyRequestDto request) {
         return companyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody CompanyRequestDto request) {
         return companyService.update(id, request);
     }
 
     @PatchMapping("/{id}/partner-status")
+    @PreAuthorize("hasRole('ADMIN')")
     public CompanyResponseDto changePartnerStatus(
             @PathVariable @Positive Long id,
             @Valid @RequestBody
@@ -58,6 +64,7 @@ public class CompanyController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         companyService.delete(id);
     }

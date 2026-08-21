@@ -11,4 +11,5 @@ public class VacancyResponseDto {
     private String title;
     private String description;
     private Boolean partnerCompany;
+    private Boolean isActive;
 }

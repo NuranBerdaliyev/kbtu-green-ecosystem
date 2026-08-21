@@ -15,6 +15,7 @@ public class VacancyMapper {
                 .company(company)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
+                .isActive(true)
                 .build();
     }
 
@@ -35,6 +36,7 @@ public class VacancyMapper {
                 .partnerCompany(
                         vacancy.getCompany().getIsPartner()
                 )
+                .isActive(vacancy.getIsActive())
                 .build();
     }
 }

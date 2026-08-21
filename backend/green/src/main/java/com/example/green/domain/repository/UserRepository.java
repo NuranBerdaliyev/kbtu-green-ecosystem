@@ -20,6 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByIdForUpdate(@Param("id") Long id);
 
     Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
+    long countByRole(Role role);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

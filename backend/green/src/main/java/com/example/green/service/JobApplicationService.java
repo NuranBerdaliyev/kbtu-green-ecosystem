@@ -33,6 +33,12 @@ public class JobApplicationService {
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
         User student = requireStudent();
         Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        if (!Boolean.TRUE.equals(vacancy.getIsActive())) {
+            throw new IllegalStateException("Vacancy is not active");
+        }
+        if (!Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy company is not a partner");
+        }
         if (jobApplicationRepository.existsByVacancyIdAndStudentId(vacancyId, student.getId())) {
             throw new IllegalStateException("Student already applied to this vacancy");
         }

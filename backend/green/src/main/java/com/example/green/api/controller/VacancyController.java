@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class VacancyController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<VacancyResponseDto> myVacancies() {
         return vacancyService.findMyVacancies();
     }
@@ -38,17 +40,20 @@ public class VacancyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto create(@Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         vacancyService.delete(id);
     }

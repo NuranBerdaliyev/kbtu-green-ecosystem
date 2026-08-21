@@ -313,6 +313,16 @@ File: ./green/pom.xml
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -369,6 +379,53 @@ File: ./green/pom.xml
     </build>
 
 </project>
+
+========================================
+File: ./green/src/main/java/com/example/green/api/controller/AdminController.java
+========================================
+
+package com.example.green.api.controller;
+
+import com.example.green.api.dto.request.VacancyStatusRequestDto;
+import com.example.green.api.dto.response.AdminDashboardResponseDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.service.AdminService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/admin")
+@RequiredArgsConstructor
+@Validated
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminController {
+
+    private final AdminService adminService;
+
+    @GetMapping("/dashboard")
+    public AdminDashboardResponseDto dashboard() {
+        return adminService.getDashboard();
+    }
+
+    @GetMapping("/vacancies")
+    public Page<VacancyResponseDto> vacancies(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                              @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return adminService.getAllVacancies(page, size);
+    }
+
+    @PatchMapping("/vacancies/{vacancyId}/status")
+    public VacancyResponseDto changeVacancyStatus(@PathVariable @Positive Long vacancyId,
+                                                  @Valid @RequestBody VacancyStatusRequestDto request) {
+        return adminService.changeVacancyStatus(vacancyId, request);
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/controller/AuthController.java
@@ -430,6 +487,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -451,23 +509,28 @@ public class CompanyController {
         return companyService.findById(id);
     }
 
+
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<CompanyResponseDto> myCompanies() {
         return companyService.findMyCompanies();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto create(@Valid @RequestBody CompanyRequestDto request) {
         return companyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public CompanyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody CompanyRequestDto request) {
         return companyService.update(id, request);
     }
 
     @PatchMapping("/{id}/partner-status")
+    @PreAuthorize("hasRole('ADMIN')")
     public CompanyResponseDto changePartnerStatus(
             @PathVariable @Positive Long id,
             @Valid @RequestBody
@@ -478,6 +541,7 @@ public class CompanyController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         companyService.delete(id);
     }
@@ -535,6 +599,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -544,6 +609,7 @@ import java.util.List;
 @RequestMapping("/api/eco-point-containers")
 @RequiredArgsConstructor
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class EcoPointContainerController {
     private final EcoPointContainerService ecoPointContainerService;
 
@@ -870,6 +936,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -877,6 +944,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
     private final UserService userService;
 
@@ -921,6 +989,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -937,6 +1006,7 @@ public class VacancyController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasRole('HR')")
     public List<VacancyResponseDto> myVacancies() {
         return vacancyService.findMyVacancies();
     }
@@ -948,17 +1018,20 @@ public class VacancyController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto create(@Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('HR')")
     public VacancyResponseDto update(@PathVariable @Positive Long id, @Valid @RequestBody VacancyRequestDto request) {
         return vacancyService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('HR')")
     public void delete(@PathVariable @Positive Long id) {
         vacancyService.delete(id);
     }
@@ -970,13 +1043,11 @@ File: ./green/src/main/java/com/example/green/api/controller/WasteLogController.
 
 package com.example.green.api.controller;
 
-import com.example.green.api.dto.request.WasteLogRequestDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.service.WasteLogService;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -986,6 +1057,7 @@ import java.util.List;
 @RequestMapping("/api/waste-logs")
 @RequiredArgsConstructor
 @Validated
+@PreAuthorize("hasRole('ADMIN')")
 public class WasteLogController {
     private final WasteLogService wasteLogService;
 
@@ -998,26 +1070,7 @@ public class WasteLogController {
     public WasteLogResponseDto findById(@PathVariable @Positive Long id) {
         return wasteLogService.findById(id);
     }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public WasteLogResponseDto create(@RequestBody @Valid WasteLogRequestDto request) {
-        return wasteLogService.create(request);
-    }
-
-    @PutMapping("/{id}")
-    public WasteLogResponseDto update(@PathVariable @Positive Long id,
-                                      @RequestBody @Valid WasteLogRequestDto request) {
-        return wasteLogService.update(id, request);
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable @Positive Long id) {
-        wasteLogService.delete(id);
-    }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/CompanyPartnerStatusRequestDto.java
@@ -1400,6 +1453,19 @@ public class VacancySearchRequestDto {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/request/VacancyStatusRequestDto.java
+========================================
+
+package com.example.green.api.dto.request;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class VacancyStatusRequestDto {
+    @NotNull
+    private Boolean isActive;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/request/WasteDepositRequestDto.java
 ========================================
 
@@ -1474,6 +1540,35 @@ public class AchievementResponseDto {
     private String description;
     private Boolean unlocked;
     private LocalDateTime unlockedAt;
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/AdminDashboardResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import lombok.*;
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class AdminDashboardResponseDto {
+
+    private Long totalUsers;
+    private Long students;
+    private Long employees;
+    private Long hrManagers;
+
+    private Long totalContainers;
+    private Long activeContainers;
+    private Long criticalContainers;
+
+    private Long totalCompanies;
+    private Long partnerCompanies;
+
+    private Long totalVacancies;
+    private Long activeVacancies;
+    private Long totalApplications;
+
+    private Long totalEcoTransactions;
 }
 
 ========================================
@@ -1769,6 +1864,7 @@ public class VacancyResponseDto {
     private String title;
     private String description;
     private Boolean partnerCompany;
+    private Boolean isActive;
 }
 
 ========================================
@@ -1834,6 +1930,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -2024,6 +2121,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request
+    ) {
+        return build(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+    }
     private ResponseEntity<ApiErrorResponse> build(
             HttpStatus status,
             String message,
@@ -2566,6 +2675,7 @@ public class VacancyMapper {
                 .company(company)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
+                .isActive(true)
                 .build();
     }
 
@@ -2586,6 +2696,7 @@ public class VacancyMapper {
                 .partnerCompany(
                         vacancy.getCompany().getIsPartner()
                 )
+                .isActive(vacancy.getIsActive())
                 .build();
     }
 }
@@ -2771,6 +2882,7 @@ import com.example.green.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -2782,6 +2894,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -3461,7 +3574,8 @@ import lombok.*;
 @Entity
 @Table(name = "vacancies",
         indexes = {
-                @Index(name = "idx_vacancies_company", columnList = "company_id")
+                @Index(name = "idx_vacancies_company", columnList = "company_id"),
+                @Index(name = "idx_vacancies_active", columnList = "is_active")
         }
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -3488,6 +3602,10 @@ public class Vacancy {
     @NotBlank
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
+
+    @NotNull
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 }
 
 
@@ -3728,6 +3846,7 @@ import java.util.List;
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     List<Company> findByHrManagerIdOrderByNameAsc(Long hrManagerId);
     boolean existsByHrManagerIdAndNameIgnoreCase(Long hrManagerId, String name);
+    long countByIsPartnerTrue();
 }
 
 ========================================
@@ -3745,12 +3864,12 @@ import java.util.Optional;
 
 public interface EcoPointContainerRepository extends JpaRepository<EcoPointContainer, Long> {
     List<EcoPointContainer> findByWasteTypeAndIsActive(WasteType wasteType, Boolean isActive);
-
     // 新增：获取所有激活状态的回收箱
     List<EcoPointContainer> findByIsActiveTrue();
-
     // 新增：根据二维码 token 查询回收箱
     Optional<EcoPointContainer> findByQrCodeToken(String qrCodeToken);
+    long countByIsActiveTrue();
+    long countByIsActiveTrueAndFullnessPercentageGreaterThanEqual(Integer fullnessPercentage);
 }
 
 ========================================
@@ -3897,6 +4016,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByIdForUpdate(@Param("id") Long id);
 
     Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
+    long countByRole(Role role);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
@@ -3942,11 +4062,14 @@ import com.example.green.domain.entity.Vacancy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
+import java.util.Optional;
 
 public interface VacancyRepository extends JpaRepository<Vacancy, Long>,
         JpaSpecificationExecutor<Vacancy> {
     List<Vacancy> findByHrManagerIdOrderByIdDesc(Long hrManagerId);
     boolean existsByCompanyId(Long companyId);
+    Optional<Vacancy> findByIdAndIsActiveTrueAndCompany_IsPartnerTrue(Long id);
+    long countByIsActiveTrue();
 }
 
 ========================================
@@ -3963,6 +4086,7 @@ import java.util.List;
 public interface WasteLogRepository extends JpaRepository<WasteLog, Long> {
     List<WasteLog> findByUserId(Long userId);
     List<WasteLog> findByEcoPointContainerId(Long ecoPointContainerId);
+    boolean existsByEcoPointContainerId(Long ecoPointContainerId);
 }
 
 ========================================
@@ -4062,6 +4186,101 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 }
 
+
+========================================
+File: ./green/src/main/java/com/example/green/service/AdminService.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.request.VacancyStatusRequestDto;
+import com.example.green.api.dto.response.AdminDashboardResponseDto;
+import com.example.green.api.dto.response.VacancyResponseDto;
+import com.example.green.api.error.ForbiddenException;
+import com.example.green.api.error.ResourceNotFoundException;
+import com.example.green.api.mapper.VacancyMapper;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class AdminService {
+
+    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final VacancyRepository vacancyRepository;
+    private final JobApplicationRepository jobApplicationRepository;
+    private final EcoPointContainerRepository containerRepository;
+    private final EcoTransactionRepository ecoTransactionRepository;
+    private final CurrentUserService currentUserService;
+    private final VacancyMapper vacancyMapper;
+
+    @Transactional(readOnly = true)
+    public AdminDashboardResponseDto getDashboard() {
+        requireAdmin();
+
+        return AdminDashboardResponseDto.builder()
+                .totalUsers(userRepository.count())
+                .students(userRepository.countByRole(Role.STUDENT))
+                .employees(userRepository.countByRole(Role.EMPLOYEE))
+                .hrManagers(userRepository.countByRole(Role.HR))
+                .totalContainers(containerRepository.count())
+                .activeContainers(
+                        containerRepository.countByIsActiveTrue()
+                )
+                .criticalContainers(
+                        containerRepository.countByIsActiveTrueAndFullnessPercentageGreaterThanEqual(90)
+                )
+                .totalCompanies(companyRepository.count())
+                .partnerCompanies(companyRepository.countByIsPartnerTrue())
+                .totalVacancies(vacancyRepository.count())
+                .activeVacancies(vacancyRepository.countByIsActiveTrue())
+                .totalApplications(jobApplicationRepository.count())
+                .totalEcoTransactions(ecoTransactionRepository.count())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VacancyResponseDto> getAllVacancies(int page, int size) {
+        requireAdmin();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        return vacancyRepository.findAll(pageable).map(vacancyMapper::toDto);
+    }
+
+    @Transactional
+    public VacancyResponseDto changeVacancyStatus(Long vacancyId, VacancyStatusRequestDto request) {
+        requireAdmin();
+        Vacancy vacancy = vacancyRepository.findById(vacancyId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Vacancy not found: id=" + vacancyId)
+                );
+
+        if (Boolean.TRUE.equals(request.getIsActive())
+                && !Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy cannot be activated because company is not a partner");
+        }
+
+        vacancy.setIsActive(request.getIsActive());
+
+        return vacancyMapper.toDto(vacancyRepository.save(vacancy));
+    }
+
+    private User requireAdmin() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("Only administrators can perform this action");
+        }
+
+        return user;
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/AuthService.java
@@ -4354,8 +4573,10 @@ import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -4363,43 +4584,47 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EcoPointContainerService {
     private final EcoPointContainerRepository ecoPointContainerRepository;
+    private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
 
+    @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
         return ecoPointContainerRepository.findAll().stream()
                 .map(ecoPointContainerMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public EcoPointContainerResponseDto findById(Long id) {
         return ecoPointContainerMapper.toDto(getOrThrow(id));
     }
 
+    @Transactional
     public EcoPointContainerResponseDto create(EcoPointContainerRequestDto request) {
         EcoPointContainer saved = ecoPointContainerRepository.save(ecoPointContainerMapper.toEntity(request));
         return ecoPointContainerMapper.toDto(saved);
     }
 
+    @Transactional
     public EcoPointContainerResponseDto update(Long id, EcoPointContainerRequestDto request) {
         EcoPointContainer entity = getOrThrow(id);
         ecoPointContainerMapper.updateEntity(entity, request);
-        EcoPointContainer saved = ecoPointContainerRepository.save(entity);
-        return ecoPointContainerMapper.toDto(saved);
+        return ecoPointContainerMapper.toDto(ecoPointContainerRepository.save(entity));
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!ecoPointContainerRepository.existsById(id)) {
-            throw new ResourceNotFoundException("EcoPointContainer not found: id=" + id);
+        EcoPointContainer container = getOrThrow(id);
+        if (wasteLogRepository.existsByEcoPointContainerId(id)) {
+            throw new IllegalStateException("Container with waste history cannot be deleted. Deactivate it instead");
         }
         ecoPointContainerRepository.deleteById(id);
     }
 
     private EcoPointContainer getOrThrow(Long id) {
-        return ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
+        return ecoPointContainerRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/EcoPointsContainerActionService.java
@@ -4912,6 +5137,12 @@ public class JobApplicationService {
     public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
         User student = requireStudent();
         Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        if (!Boolean.TRUE.equals(vacancy.getIsActive())) {
+            throw new IllegalStateException("Vacancy is not active");
+        }
+        if (!Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy company is not a partner");
+        }
         if (jobApplicationRepository.existsByVacancyIdAndStudentId(vacancyId, student.getId())) {
             throw new IllegalStateException("Student already applied to this vacancy");
         }
@@ -5099,9 +5330,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ProfileService {
     private final ProfileRepository profileRepository;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
     private final ProfileMapper profileMapper;
 
+    @Transactional(readOnly = true)
+    public ProfileResponseDto getMyProfile() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        return getByUserId(user.getId());
+    }
     @Transactional(readOnly = true)
     public ProfileResponseDto getByUserId(Long userId) {
         Profile profile = profileRepository.findByUserId(userId)
@@ -5110,17 +5346,21 @@ public class ProfileService {
     }
 
     @Transactional
-    public ProfileResponseDto upsertByUserId(Long userId, ProfileRequestDto request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + userId));
+    public ProfileResponseDto upsertMyProfile(ProfileRequestDto request) {
+        User user = currentUserService.getCurrentUserOrThrow();
 
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseGet(() -> Profile.builder().user(user).build());
-
+        Profile profile = profileRepository
+                .findByUserId(user.getId())
+                .orElseGet(() -> Profile.builder()
+                                .user(user)
+                                .build()
+                );
 
         profileMapper.updateEntity(profile, request);
-        Profile saved = profileRepository.save(profile);
-        return profileMapper.toDto(saved);
+
+        return profileMapper.toDto(
+                profileRepository.save(profile)
+        );
     }
 }
 
@@ -5580,6 +5820,7 @@ import com.example.green.api.dto.response.UserResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.UserMapper;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -5593,6 +5834,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public List<UserResponseDto> findAll() {
@@ -5610,31 +5852,45 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto update(
-            Long id,
-            UserRequestDto request
-    ) {
-        User user = getUserOrThrow(id);
-        userMapper.updateEntity(user, request);
+    public UserResponseDto update(Long id, UserRequestDto request) {
+        User currentAdmin = currentUserService.getCurrentUserOrThrow();
+        User target = getUserOrThrow(id);
+
+        boolean removesAdminRole = target.getRole() == Role.ADMIN && request.getRole() != Role.ADMIN;
+
+        if (removesAdminRole && userRepository.countByRole(Role.ADMIN) <= 1) {
+            throw new IllegalStateException("The last administrator cannot be demoted");
+        }
+        if (currentAdmin.getId().equals(target.getId()) && request.getRole() != Role.ADMIN) {
+            throw new IllegalStateException("Administrator cannot demote their own account");
+        }
+
+            userMapper.updateEntity(target, request);
 
         return userMapper.toDto(
-                userRepository.save(user)
+                userRepository.save(target)
         );
     }
 
     @Transactional
     public void delete(Long id) {
-        User user = getUserOrThrow(id);
-        userRepository.delete(user);
+        User currentAdmin = currentUserService.getCurrentUserOrThrow();
+        User target = getUserOrThrow(id);
+
+        if (currentAdmin.getId().equals(target.getId())) {
+            throw new IllegalStateException("Administrator cannot delete their own account");
+        }
+
+        if (target.getRole() == Role.ADMIN && userRepository.countByRole(Role.ADMIN) <= 1) {
+            throw new IllegalStateException("The last administrator cannot be deleted");
+        }
+
+        userRepository.delete(target);
     }
 
     private User getUserOrThrow(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found: id=" + id
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
     }
 }
 
@@ -5718,9 +5974,10 @@ public class VacancyService {
 
     @Transactional(readOnly = true)
     public VacancyResponseDto findById(Long id) {
-        return vacancyMapper.toDto(
-                getVacancyOrThrow(id)
-        );
+        Vacancy vacancy = vacancyRepository
+                .findByIdAndIsActiveTrueAndCompany_IsPartnerTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Published vacancy not found: id=" + id));
+        return vacancyMapper.toDto(vacancy);
     }
 
     @Transactional(readOnly = true)
@@ -5739,6 +5996,7 @@ public class VacancyService {
     public VacancyResponseDto create(VacancyRequestDto request) {
         User hr = requireHr();
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         Vacancy vacancy = vacancyMapper.toEntity(request, hr, company);
 
@@ -5750,6 +6008,7 @@ public class VacancyService {
         Vacancy vacancy = getVacancyOrThrow(id);
         User hr = requireVacancyOwner(vacancy);
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         vacancyMapper.updateEntity(vacancy, request, company);
 
@@ -5770,6 +6029,8 @@ public class VacancyService {
     private Specification<Vacancy> buildSpecification(VacancySearchRequestDto request) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isTrue(root.get("isActive")));
+            predicates.add(cb.isTrue(root.get("company").get("isPartner")));
 
             if (request.getQuery() != null && !request.getQuery().isBlank()) {
                 String pattern = "%" + request.getQuery().toLowerCase().trim() + "%";
@@ -5828,6 +6089,12 @@ public class VacancyService {
             throw new ForbiddenException("HR cannot create vacancy for another company");
         }
     }
+
+    private void requirePartnerCompany(Company company) {
+        if (!Boolean.TRUE.equals(company.getIsPartner())) {
+            throw new IllegalStateException("Only partner companies can publish vacancies");
+        }
+    }
 }
 
 ========================================
@@ -5836,18 +6103,14 @@ File: ./green/src/main/java/com/example/green/service/WasteLogService.java
 
 package com.example.green.service;
 
-import com.example.green.api.dto.request.WasteLogRequestDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.WasteLogMapper;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.WasteLog;
-import com.example.green.domain.repository.EcoPointContainerRepository;
-import com.example.green.domain.repository.UserRepository;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -5855,60 +6118,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WasteLogService {
     private final WasteLogRepository wasteLogRepository;
-    private final UserRepository userRepository;
-    private final EcoPointContainerRepository ecoPointContainerRepository;
     private final WasteLogMapper wasteLogMapper;
 
+    @Transactional(readOnly = true)
     public List<WasteLogResponseDto> findAll() {
         return wasteLogRepository.findAll().stream()
                 .map(wasteLogMapper::toDto)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public WasteLogResponseDto findById(Long id) {
         return wasteLogMapper.toDto(getWasteLogOrThrow(id));
-    }
-
-    public WasteLogResponseDto create(WasteLogRequestDto request) {
-        User user = getUserOrThrow(request.getUserId());
-        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
-        WasteLog saved = wasteLogRepository.save(wasteLogMapper.toEntity(request, user, ecoPointContainer));
-        return wasteLogMapper.toDto(saved);
-    }
-
-    public WasteLogResponseDto update(Long id, WasteLogRequestDto request) {
-        WasteLog entity = getWasteLogOrThrow(id);
-        User user = getUserOrThrow(request.getUserId());
-        EcoPointContainer ecoPointContainer = getEcoPointOrThrow(request.getEcoPointContainerId());
-        wasteLogMapper.updateEntity(entity, request, user, ecoPointContainer);
-        WasteLog saved = wasteLogRepository.save(entity);
-        return wasteLogMapper.toDto(saved);
-    }
-
-    public void delete(Long id) {
-        if (!wasteLogRepository.existsById(id)) {
-            throw new ResourceNotFoundException("WasteLog not found: id=" + id);
-        }
-        wasteLogRepository.deleteById(id);
     }
 
     private WasteLog getWasteLogOrThrow(Long id) {
         return wasteLogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WasteLog not found: id=" + id));
     }
-
-    private User getUserOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
-    }
-
-    private EcoPointContainer getEcoPointOrThrow(Long id) {
-        return ecoPointContainerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("EcoPointContainer not found: id=" + id));
-    }
 }
-
-
 
 ========================================
 File: ./green/src/main/resources/application-dev.yaml
@@ -6303,6 +6531,19 @@ CREATE INDEX idx_users_leaderboard
     WHERE role IN ('STUDENT', 'EMPLOYEE');
 
 ========================================
+File: ./green/src/main/resources/db/migration/V8__admin_panel.sql
+========================================
+
+ALTER TABLE vacancies
+    ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE INDEX idx_vacancies_active
+    ON vacancies(is_active);
+
+CREATE INDEX idx_containers_admin_monitoring
+    ON eco_point_containers(is_active, fullness_percentage);
+
+========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java
 ========================================
 
@@ -6491,6 +6732,376 @@ class CompanyServiceTest {
 }
 
 ========================================
+File: ./green/src/test/java/com/example/green/service/GamificationIntegrationTest.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.response.GamificationProfileResponseDto;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.AchievementCode;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.enums.WasteType;
+import com.example.green.domain.model.RewardResult;
+import com.example.green.domain.repository.EcoTransactionRepository;
+import com.example.green.domain.repository.UserAchievementRepository;
+import com.example.green.domain.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+@SpringBootTest
+@Testcontainers
+class GamificationIntegrationTest {
+
+    private static final DockerImageName POSTGIS_IMAGE =
+            DockerImageName.parse("postgis/postgis:16-3.4")
+                    .asCompatibleSubstituteFor("postgres");
+
+    @Container
+    static final PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>(POSTGIS_IMAGE)
+                    .withDatabaseName("green_test")
+                    .withUsername("green_test")
+                    .withPassword("green_test");
+
+    @DynamicPropertySource
+    static void configureDatabase(DynamicPropertyRegistry registry) {
+        registry.add(
+                "spring.datasource.url",
+                postgres::getJdbcUrl
+        );
+        registry.add(
+                "spring.datasource.username",
+                postgres::getUsername
+        );
+        registry.add(
+                "spring.datasource.password",
+                postgres::getPassword
+        );
+        registry.add(
+                "spring.jpa.hibernate.ddl-auto",
+                () -> "validate"
+        );
+        registry.add(
+                "spring.flyway.enabled",
+                () -> true
+        );
+    }
+
+    @Autowired
+    private GamificationService gamificationService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private EcoTransactionRepository ecoTransactionRepository;
+
+    @Autowired
+    private UserAchievementRepository userAchievementRepository;
+
+    @MockBean
+    private CurrentUserService currentUserService;
+
+    @BeforeEach
+    void cleanDatabase() {
+        userAchievementRepository.deleteAllInBatch();
+        ecoTransactionRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void completedTripShouldUpdateUserAndCreateTransaction() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(result.applied());
+        assertEquals(20L, result.ecoCoinsEarned());
+        assertEquals(2, result.esgRatingEarned());
+        assertEquals(
+                new BigDecimal("1.200"),
+                result.co2Saved()
+        );
+
+        assertEquals(20L, updated.getEcoCoinsBalance());
+        assertEquals(2, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("1.200"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertEquals(1, ecoTransactionRepository.count());
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_ACTION
+                )
+        );
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_SHARED_TRIP
+                )
+        );
+    }
+
+    @Test
+    void sameTripShouldNotGiveRewardTwice() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult first =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        RewardResult second =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        10.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(first.applied());
+        assertFalse(second.applied());
+
+        assertEquals(20L, updated.getEcoCoinsBalance());
+        assertEquals(2, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("1.200"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertEquals(1, ecoTransactionRepository.count());
+    }
+
+    @Test
+    void wasteDepositShouldUpdateGamificationData() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                0,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForWasteDeposit(
+                        user.getId(),
+                        200L,
+                        250,
+                        WasteType.PLASTIC
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertTrue(result.applied());
+        assertEquals(2L, result.ecoCoinsEarned());
+        assertEquals(1, result.esgRatingEarned());
+        assertEquals(
+                new BigDecimal("0.375"),
+                result.co2Saved()
+        );
+
+        assertEquals(2L, updated.getEcoCoinsBalance());
+        assertEquals(1, updated.getEsgRating());
+        assertEquals(
+                new BigDecimal("0.375"),
+                updated.getTotalCo2Saved()
+        );
+
+        assertTrue(
+                userAchievementRepository.existsByUserIdAndCode(
+                        user.getId(),
+                        AchievementCode.FIRST_WASTE_DEPOSIT
+                )
+        );
+    }
+
+    @Test
+    void esgRatingShouldNotExceedOneHundred() {
+        User user = userRepository.save(user(
+                "student@test.com",
+                Role.STUDENT,
+                99,
+                0L,
+                "0.000"
+        ));
+
+        RewardResult result =
+                gamificationService.rewardForCompletedTrip(
+                        user.getId(),
+                        100L,
+                        5.0
+                );
+
+        User updated = userRepository.findById(user.getId())
+                .orElseThrow();
+
+        assertEquals(100, updated.getEsgRating());
+        assertEquals(1, result.esgRatingEarned());
+    }
+
+    @Test
+    void profileShouldCalculateCorrectLeaderboardRank() {
+        userRepository.save(user(
+                "leader@test.com",
+                Role.STUDENT,
+                90,
+                100L,
+                "5.000"
+        ));
+
+        User currentUser = userRepository.save(user(
+                "current@test.com",
+                Role.STUDENT,
+                70,
+                50L,
+                "2.000"
+        ));
+
+        userRepository.save(user(
+                "lower@test.com",
+                Role.EMPLOYEE,
+                40,
+                500L,
+                "20.000"
+        ));
+
+        // HR не должен участвовать в лидерборде
+        userRepository.save(user(
+                "hr@test.com",
+                Role.HR,
+                100,
+                1000L,
+                "100.000"
+        ));
+
+        when(currentUserService.getCurrentUserOrThrow())
+                .thenReturn(currentUser);
+
+        GamificationProfileResponseDto profile =
+                gamificationService.getMyProfile();
+
+        assertEquals(2L, profile.getLeaderboardRank());
+    }
+
+    @Test
+    void leaderboardShouldSortAndExcludeHr() {
+        User second = userRepository.save(user(
+                "second@test.com",
+                Role.EMPLOYEE,
+                70,
+                100L,
+                "5.000"
+        ));
+
+        User first = userRepository.save(user(
+                "first@test.com",
+                Role.STUDENT,
+                90,
+                50L,
+                "2.000"
+        ));
+
+        userRepository.save(user(
+                "hr@test.com",
+                Role.HR,
+                100,
+                1000L,
+                "100.000"
+        ));
+
+        var leaderboard =
+                gamificationService.getLeaderboard(0, 20);
+
+        assertEquals(2, leaderboard.getTotalElements());
+
+        assertEquals(
+                first.getId(),
+                leaderboard.getContent().get(0).getUserId()
+        );
+
+        assertEquals(
+                second.getId(),
+                leaderboard.getContent().get(1).getUserId()
+        );
+
+        assertEquals(
+                1L,
+                leaderboard.getContent().get(0).getRank()
+        );
+
+        assertEquals(
+                2L,
+                leaderboard.getContent().get(1).getRank()
+        );
+    }
+
+    private User user(
+            String email,
+            Role role,
+            int esgRating,
+            long ecoCoins,
+            String co2
+    ) {
+        return User.builder()
+                .email(email)
+                .fullName("Test User")
+                .role(role)
+                .passwordHash("x".repeat(60))
+                .ecoCoinsBalance(ecoCoins)
+                .esgRating(esgRating)
+                .totalCo2Saved(new BigDecimal(co2))
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+}
+
+========================================
 File: ./green/src/test/java/com/example/green/service/JobApplicationServiceTest.java
 ========================================
 
@@ -6529,6 +7140,9 @@ class JobApplicationServiceTest {
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock
+    private GamificationService gamificationService;
+
     @Spy
     private JobApplicationMapper jobApplicationMapper =
             new JobApplicationMapper();
@@ -6554,6 +7168,12 @@ class JobApplicationServiceTest {
 
         JobApplication regular =
                 application(101L, vacancy, regularStudent);
+
+        when(gamificationService.isRecommended(strongStudent))
+                .thenReturn(true);
+
+        when(gamificationService.isRecommended(regularStudent))
+                .thenReturn(false);
 
         when(currentUserService.getCurrentUserOrThrow())
                 .thenReturn(hr);

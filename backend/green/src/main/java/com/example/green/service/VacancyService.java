@@ -46,9 +46,10 @@ public class VacancyService {
 
     @Transactional(readOnly = true)
     public VacancyResponseDto findById(Long id) {
-        return vacancyMapper.toDto(
-                getVacancyOrThrow(id)
-        );
+        Vacancy vacancy = vacancyRepository
+                .findByIdAndIsActiveTrueAndCompany_IsPartnerTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Published vacancy not found: id=" + id));
+        return vacancyMapper.toDto(vacancy);
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +68,7 @@ public class VacancyService {
     public VacancyResponseDto create(VacancyRequestDto request) {
         User hr = requireHr();
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         Vacancy vacancy = vacancyMapper.toEntity(request, hr, company);
 
@@ -78,6 +80,7 @@ public class VacancyService {
         Vacancy vacancy = getVacancyOrThrow(id);
         User hr = requireVacancyOwner(vacancy);
         Company company = getCompanyOrThrow(request.getCompanyId());
+        requirePartnerCompany(company);
         requireCompanyOwner(company, hr);
         vacancyMapper.updateEntity(vacancy, request, company);
 
@@ -98,6 +101,8 @@ public class VacancyService {
     private Specification<Vacancy> buildSpecification(VacancySearchRequestDto request) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isTrue(root.get("isActive")));
+            predicates.add(cb.isTrue(root.get("company").get("isPartner")));
 
             if (request.getQuery() != null && !request.getQuery().isBlank()) {
                 String pattern = "%" + request.getQuery().toLowerCase().trim() + "%";
@@ -154,6 +159,12 @@ public class VacancyService {
     private void requireCompanyOwner(Company company, User hr) {
         if (!company.getHrManager().getId().equals(hr.getId())) {
             throw new ForbiddenException("HR cannot create vacancy for another company");
+        }
+    }
+
+    private void requirePartnerCompany(Company company) {
+        if (!Boolean.TRUE.equals(company.getIsPartner())) {
+            throw new IllegalStateException("Only partner companies can publish vacancies");
         }
     }
 }
