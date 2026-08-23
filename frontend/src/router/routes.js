@@ -64,12 +64,6 @@ export const routes = [
         meta: { title: 'Карта контейнеров', requiresAuth: true },
       },
       {
-        path: 'eco-bins/:id',
-        name: 'eco-bin',
-        component: () => import('@/views/ecowaste/EcoBinView.vue'),
-        meta: { title: 'Контейнер', requiresAuth: true },
-      },
-      {
         path: 'deposit',
         name: 'deposit',
         component: () => import('@/views/ecowaste/DepositView.vue'),

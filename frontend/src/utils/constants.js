@@ -78,3 +78,35 @@ export const COVER_LETTER_MAX = 5000
 
 /** KBTU main campus — default map centre. */
 export const CAMPUS_CENTER = { lat: 43.2364, lng: 76.9457 }
+
+/** EcoTransactionSource — where a reward came from. */
+export const ECO_SOURCE_LABELS = {
+  TRIP_COMPLETED: 'Совместная поездка',
+  WASTE_DEPOSIT: 'Сдача отходов',
+  ADMIN_ADJUSTMENT: 'Корректировка администратора',
+}
+
+/** AchievementCode — titles come from the backend, this is only for icons. */
+export const ACHIEVEMENT_ORDER = [
+  'FIRST_ACTION',
+  'FIRST_SHARED_TRIP',
+  'CARPOOL_REGULAR',
+  'FIRST_WASTE_DEPOSIT',
+  'RECYCLING_REGULAR',
+  'ECOCOINS_100',
+  'ESG_70',
+  'CO2_10_KG',
+]
+
+/** Sort options for the HR candidate list. */
+export const CANDIDATE_SORT = {
+  ESG_DESC: 'ESG_DESC',
+  APPLIED_AT_DESC: 'APPLIED_AT_DESC',
+}
+
+/** Password rule from RegisterRequestDto: 8-72 chars, lower + upper + digit. */
+export const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/
+
+/** Container is treated as critical at this fullness (backend alerts at 90). */
+export const FULLNESS_CRITICAL = 90
+export const FULLNESS_WARNING = 70

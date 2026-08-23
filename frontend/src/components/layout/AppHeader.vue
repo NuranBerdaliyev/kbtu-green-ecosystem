@@ -15,8 +15,8 @@ const links = [
   { name: 'leaderboard', label: 'Рейтинг' },
 ]
 
-async function signOut() {
-  await auth.logout()
+function signOut() {
+  auth.logout()
   router.push({ name: 'login' })
 }
 </script>
@@ -38,7 +38,7 @@ async function signOut() {
 
       <div class="header__side">
         <span class="coins" title="EcoCoins">
-          <span class="metric">{{ formatNumber(auth.user?.ecoCoinsBalance) }}</span>
+          <span class="metric">{{ formatNumber(auth.stats?.ecoCoinsBalance) }}</span>
           EC
         </span>
         <RouterLink :to="{ name: 'profile' }" class="profile-link">

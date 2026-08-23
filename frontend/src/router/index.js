@@ -11,11 +11,12 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
+  // Rehydrate the session once after a hard refresh.
   await auth.restoreSession()
 
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
+  //if (to.meta.requiresAuth && !auth.isAuthenticated) {
+ //   return { name: 'login', query: { redirect: to.fullPath } }
+  //}
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'home' }

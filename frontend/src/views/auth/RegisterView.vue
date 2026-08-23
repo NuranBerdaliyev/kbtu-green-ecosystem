@@ -1,20 +1,32 @@
 <script setup>
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { PASSWORD_PATTERN } from '@/utils/constants'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
 
-// Matches the expected POST /api/auth/register body (stage 3).
+// Matches RegisterRequestDto exactly.
 const form = reactive({ fullName: '', email: '', password: '' })
 
-// Stage 3: validation, password rules and role selection come from the backend contract.
+/**
+ * The backend rejects weak passwords with a 400. Checking the same rule here
+ * means the user sees the requirement before submitting, not after.
+ */
+const passwordValid = computed(() => PASSWORD_PATTERN.test(form.password))
+const passwordHint = computed(() => {
+  if (!form.password) return ''
+  return passwordValid.value ? '' : 'Минимум 8 символов, заглавная, строчная и цифра'
+})
+
 async function submit() {
+  if (!passwordValid.value) return
+  // Register returns tokens, so the user is signed in straight away.
   const ok = await auth.register({ ...form })
-  if (ok) router.push({ name: 'login' })
+  if (ok) router.push({ name: 'home' })
 }
 </script>
 
@@ -38,11 +50,19 @@ async function submit() {
       autocomplete="email"
       :error="auth.fieldErrors.email"
     />
-    <BaseInput v-model="form.password" label="Пароль" type="password" autocomplete="new-password" />
+    <BaseInput
+      v-model="form.password"
+      label="Пароль"
+      type="password"
+      autocomplete="new-password"
+      :error="auth.fieldErrors.password || passwordHint"
+    />
 
     <p v-if="auth.error" class="error">{{ auth.error }}</p>
 
-    <BaseButton type="submit" :loading="auth.loading">Создать аккаунт</BaseButton>
+    <BaseButton type="submit" :loading="auth.loading" :disabled="!passwordValid">
+      Создать аккаунт
+    </BaseButton>
 
     <p class="text-muted">
       Уже есть аккаунт?

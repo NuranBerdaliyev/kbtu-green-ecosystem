@@ -1,4 +1,5 @@
 <script setup>
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { formatNumber, formatCo2 } from '@/utils/format'
@@ -6,26 +7,13 @@ import { ESG_RATING_MAX } from '@/utils/constants'
 
 const auth = useAuthStore()
 
-// EcoCoins, ESG and CO₂ live on UserResponseDto — there is no separate
-// gamification endpoint. Stage 7 may add one; until then the user object is
-// the single source of truth.
 const modules = [
-  {
-    to: 'trips',
-    label: 'Совместные поездки',
-    text: 'Найдите попутчиков до кампуса и сократите выбросы.',
-  },
-  {
-    to: 'eco-map',
-    label: 'Переработка отходов',
-    text: 'Карта контейнеров и сдача отходов по QR-коду.',
-  },
-  {
-    to: 'vacancies',
-    label: 'Карьера',
-    text: 'Вакансии партнёров, которые смотрят на ваш ESG-профиль.',
-  },
+  { to: 'trips', label: 'Совместные поездки', text: 'Найдите попутчиков до кампуса.' },
+  { to: 'eco-map', label: 'Переработка отходов', text: 'Карта контейнеров и сдача отходов.' },
+  { to: 'vacancies', label: 'Карьера', text: 'Вакансии партнёров университета.' },
 ]
+
+onMounted(auth.loadStats)
 </script>
 
 <template>
@@ -38,28 +26,26 @@ const modules = [
     <section class="stats">
       <article class="card stat">
         <p class="text-muted">EcoCoins</p>
-        <p class="metric stat__value">{{ formatNumber(auth.user?.ecoCoinsBalance) }}</p>
+        <p class="metric stat__value">{{ formatNumber(auth.stats?.ecoCoinsBalance) }}</p>
       </article>
       <article class="card stat">
         <p class="text-muted">ESG-рейтинг</p>
         <p class="metric stat__value">
-          {{ formatNumber(auth.user?.esgRating)
-          }}<span class="stat__max">/{{ ESG_RATING_MAX }}</span>
+          {{ auth.stats?.esgRating ?? 0 }}<span class="stat__max">/{{ ESG_RATING_MAX }}</span>
         </p>
       </article>
       <article class="card stat">
         <p class="text-muted">Сокращено выбросов</p>
-        <p class="metric stat__value">{{ formatCo2(auth.user?.totalCo2Saved) }}</p>
+        <p class="metric stat__value">{{ formatCo2(auth.stats?.totalCo2Saved) }}</p>
+      </article>
+      <article class="card stat">
+        <p class="text-muted">Место в рейтинге</p>
+        <p class="metric stat__value">#{{ auth.stats?.leaderboardRank ?? '—' }}</p>
       </article>
     </section>
 
     <section class="modules">
-      <RouterLink
-        v-for="item in modules"
-        :key="item.to"
-        :to="{ name: item.to }"
-        class="card module"
-      >
+      <RouterLink v-for="item in modules" :key="item.to" :to="{ name: item.to }" class="card module">
         <h3>{{ item.label }}</h3>
         <p class="text-muted">{{ item.text }}</p>
       </RouterLink>
@@ -68,7 +54,12 @@ const modules = [
 </template>
 
 <style scoped>
-.stats,
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
 .modules {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

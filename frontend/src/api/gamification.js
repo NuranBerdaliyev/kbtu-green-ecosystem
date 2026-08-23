@@ -1,9 +1,16 @@
 import http from './http'
 
-/** Gamification engine — stage 7. */
+/**
+ * GamificationController — /api/gamification
+ * getMyProfile -> { userId, fullName, ecoCoinsBalance, esgRating,
+ *                   totalCo2Saved, leaderboardRank, unlockedAchievements }
+ * history / leaderboard return a Spring Page.
+ */
 export const gamificationApi = {
-  myStats: () => http.get('/gamification/me').then((r) => r.data),
-  achievements: () => http.get('/gamification/achievements').then((r) => r.data),
-  leaderboard: (params) => http.get('/gamification/leaderboard', { params }).then((r) => r.data),
-  history: (params) => http.get('/gamification/history', { params }).then((r) => r.data),
+  me: () => http.get('/gamification/me').then((r) => r.data),
+  history: (page = 0, size = 20) =>
+    http.get('/gamification/me/history', { params: { page, size } }).then((r) => r.data),
+  achievements: () => http.get('/gamification/me/achievements').then((r) => r.data),
+  leaderboard: (page = 0, size = 20) =>
+    http.get('/gamification/leaderboard', { params: { page, size } }).then((r) => r.data),
 }

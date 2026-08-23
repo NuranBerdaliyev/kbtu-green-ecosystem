@@ -11,7 +11,6 @@ const route = useRoute()
 
 const form = reactive({ email: '', password: '' })
 
-// Stage 3: add field-level validation and remember the last used email.
 async function submit() {
   const ok = await auth.login({ ...form })
   if (ok) router.push(route.query.redirect ?? { name: 'home' })
@@ -22,7 +21,7 @@ async function submit() {
   <form class="card auth-form stack" @submit.prevent="submit">
     <div>
       <h1>Вход</h1>
-      <p class="text-muted">Используйте корпоративную почту KBTU.</p>
+      <p class="text-muted">Используйте почту, указанную при регистрации.</p>
     </div>
 
     <BaseInput
