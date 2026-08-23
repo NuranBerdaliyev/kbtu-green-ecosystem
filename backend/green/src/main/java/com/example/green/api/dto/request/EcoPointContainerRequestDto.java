@@ -17,8 +17,8 @@ public class EcoPointContainerRequestDto {
     private WasteType wasteType;
 
     @NotNull
-    @Min(0) @Max(100)
-    private Integer fullnessPercentage;
+    @Min(1)
+    private Integer capacityGrams;
 
     @NotNull
     private Boolean isActive;

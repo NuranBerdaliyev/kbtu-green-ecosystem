@@ -16,7 +16,9 @@ public class EcoPointContainerMapper {
                 .title(dto.getTitle())
                 .location(geometryMapper.fromWkt(dto.getLocationWkt()))
                 .wasteType(dto.getWasteType())
-                .fullnessPercentage(dto.getFullnessPercentage())
+                .capacityGrams(dto.getCapacityGrams())
+                .currentWeightGrams(0)
+                .fullnessPercentage(0)
                 .isActive(dto.getIsActive())
                 .qrCodeToken(dto.getQrCodeToken())
                 .build();
@@ -26,9 +28,9 @@ public class EcoPointContainerMapper {
         entity.setTitle(dto.getTitle());
         entity.setLocation(geometryMapper.fromWkt(dto.getLocationWkt()));
         entity.setWasteType(dto.getWasteType());
-        entity.setFullnessPercentage(dto.getFullnessPercentage());
         entity.setIsActive(dto.getIsActive());
         entity.setQrCodeToken(dto.getQrCodeToken());
+        entity.changeCapacity(dto.getCapacityGrams());
     }
 
     public EcoPointContainerResponseDto toDto(EcoPointContainer entity) {
@@ -37,6 +39,8 @@ public class EcoPointContainerMapper {
                 .title(entity.getTitle())
                 .locationWkt(geometryMapper.toWkt(entity.getLocation()))
                 .wasteType(entity.getWasteType())
+                .capacityGrams(entity.getCapacityGrams())
+                .currentWeightGrams(entity.getCurrentWeightGrams())
                 .fullnessPercentage(entity.getFullnessPercentage())
                 .isActive(entity.getIsActive())
                 .qrCodeToken(entity.getQrCodeToken())

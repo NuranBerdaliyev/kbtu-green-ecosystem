@@ -13,6 +13,7 @@ public class WasteLogMapper {
                 .ecoPointContainerId(entity.getEcoPointContainer().getId())
                 .scannedAt(entity.getScannedAt())
                 .ecoCoinsEarned(entity.getEcoCoinsEarned())
+                .wasteWeightGrams(entity.getWasteWeightGrams())
                 .build();
     }
 }

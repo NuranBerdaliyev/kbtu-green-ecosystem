@@ -32,4 +32,9 @@ public class WasteLog {
     @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
     @Column(name = "eco_coins_earned", nullable = false)
     private Integer ecoCoinsEarned;
+
+    @NotNull
+    @Min(0)
+    @Column(name = "waste_weight_grams", nullable = false)
+    private Integer wasteWeightGrams;
 }

@@ -10,6 +10,8 @@ public class EcoPointContainerResponseDto {
     private String locationWkt;
     private WasteType wasteType;
     private Integer fullnessPercentage;
+    private Integer capacityGrams;
+    private Integer currentWeightGrams;
     private Boolean isActive;
     private String qrCodeToken;
 }

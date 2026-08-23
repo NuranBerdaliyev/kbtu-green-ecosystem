@@ -8,6 +8,7 @@ import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ public class EcoPointContainerService {
     private final EcoPointContainerRepository ecoPointContainerRepository;
     private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
@@ -40,7 +42,15 @@ public class EcoPointContainerService {
 
     @Transactional
     public EcoPointContainerResponseDto update(Long id, EcoPointContainerRequestDto request) {
-        EcoPointContainer entity = getOrThrow(id);
+        EcoPointContainer entity = ecoPointContainerRepository
+                .findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
+                );
+        boolean changesWasteType = entity.getWasteType() != request.getWasteType();
+        if (changesWasteType && entity.getCurrentWeightGrams() > 0) {
+            throw new IllegalStateException("Waste type cannot be changed until container is emptied");
+        }
         ecoPointContainerMapper.updateEntity(entity, request);
         return ecoPointContainerMapper.toDto(ecoPointContainerRepository.save(entity));
     }
@@ -52,6 +62,21 @@ public class EcoPointContainerService {
             throw new IllegalStateException("Container with waste history cannot be deleted. Deactivate it instead");
         }
         ecoPointContainerRepository.deleteById(id);
+    }
+
+    @Transactional
+    public EcoPointContainerResponseDto empty(Long id) {
+        EcoPointContainer container = ecoPointContainerRepository
+                        .findByIdForUpdate(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
+                        );
+
+        container.empty();
+        EcoPointContainer saved = ecoPointContainerRepository.save(container);
+        EcoPointContainerResponseDto response = ecoPointContainerMapper.toDto(saved);
+        messagingTemplate.convertAndSend("/topic/eco-containers", response);
+        return response;
     }
 
     private EcoPointContainer getOrThrow(Long id) {

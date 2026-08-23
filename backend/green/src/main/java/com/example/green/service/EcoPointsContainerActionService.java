@@ -39,72 +39,51 @@ public class EcoPointsContainerActionService {
     }
 
     @Transactional
-    public WasteLogResponseDto processDeposit(WasteDepositRequestDto request) {
+    public WasteLogResponseDto processDeposit(
+            WasteDepositRequestDto request
+    ) {
         User user = currentUserService.getCurrentUserOrThrow();
 
         EcoPointContainer container = containerRepository
-                        .findByQrCodeToken(
-                                request.getQrCodeToken()
-                        )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException("Invalid QR code or container not found")
-                        );
+                .findByQrCodeTokenForUpdate(
+                        request.getQrCodeToken()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Invalid QR code or container not found")
+                );
 
         if (!Boolean.TRUE.equals(container.getIsActive())) {
-            throw new IllegalStateException("Container is not active");
+            throw new IllegalStateException(
+                    "Container is not active"
+            );
         }
-
-        int newFullness = Math.min(
-                100,
-                container.getFullnessPercentage()
-                        + request.getAddedFullnessPercentage()
-        );
-
-        container.setFullnessPercentage(newFullness);
+        container.acceptWaste(request.getWasteWeightGrams());
         containerRepository.save(container);
 
-        /*
-         * Сначала создаём WasteLog, чтобы получить уникальный
-         * id конкретной сдачи отходов.
-         */
         WasteLog log = WasteLog.builder()
                 .user(user)
                 .ecoPointContainer(container)
                 .scannedAt(LocalDateTime.now())
                 .ecoCoinsEarned(0)
+                .wasteWeightGrams(
+                        request.getWasteWeightGrams()
+                )
                 .build();
 
         log = wasteLogRepository.save(log);
 
-        RewardResult reward =
-                gamificationService.rewardForWasteDeposit(
+        RewardResult reward = gamificationService.rewardForWasteDeposit(
                         user.getId(),
                         log.getId(),
                         request.getWasteWeightGrams(),
                         container.getWasteType()
                 );
 
-        log.setEcoCoinsEarned(
-                Math.toIntExact(reward.ecoCoinsEarned())
-        );
+        log.setEcoCoinsEarned(Math.toIntExact(reward.ecoCoinsEarned()));
 
         WasteLog savedLog = wasteLogRepository.save(log);
-
         EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
-
-        messagingTemplate.convertAndSend(
-                "/topic/eco-containers",
-                containerDto
-        );
-
-        if (newFullness >= 90) {
-            messagingTemplate.convertAndSend(
-                    "/topic/admin/alerts",
-                    "Container ID " + container.getId()
-                            + " is " + newFullness
-                            + "% full"
-            );
-        }
+        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
 
         return wasteLogMapper.toDto(savedLog);
     }

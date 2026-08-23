@@ -11,4 +11,5 @@ public class WasteLogResponseDto {
     private Long ecoPointContainerId;
     private LocalDateTime scannedAt;
     private Integer ecoCoinsEarned;
+    private Integer wasteWeightGrams;
 }

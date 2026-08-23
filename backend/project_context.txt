@@ -629,6 +629,13 @@ public class EcoPointContainerController {
         return ecoPointContainerService.create(request);
     }
 
+    @PostMapping("/{id}/empty")
+    public EcoPointContainerResponseDto empty(
+            @PathVariable @Positive Long id
+    ) {
+        return ecoPointContainerService.empty(id);
+    }
+
     @PutMapping("/{id}")
     public EcoPointContainerResponseDto update(@PathVariable @Positive Long id,
                                                @RequestBody @Valid EcoPointContainerRequestDto request) {
@@ -1145,8 +1152,8 @@ public class EcoPointContainerRequestDto {
     private WasteType wasteType;
 
     @NotNull
-    @Min(0) @Max(100)
-    private Integer fullnessPercentage;
+    @Min(1)
+    private Integer capacityGrams;
 
     @NotNull
     private Boolean isActive;
@@ -1488,11 +1495,6 @@ public class WasteDepositRequestDto {
     @NotBlank
     private String qrCodeToken;
 
-    // 垃圾投递参数：体积增长(满溢度增加百分比)
-    @NotNull
-    @Min(1)
-    private Integer addedFullnessPercentage;
-
     // 垃圾投递参数：重量(克)，用于供Gamification系统计算积分与碳减排
     @NotNull
     @Min(1)
@@ -1639,6 +1641,8 @@ public class EcoPointContainerResponseDto {
     private String locationWkt;
     private WasteType wasteType;
     private Integer fullnessPercentage;
+    private Integer capacityGrams;
+    private Integer currentWeightGrams;
     private Boolean isActive;
     private String qrCodeToken;
 }
@@ -1862,6 +1866,7 @@ public class WasteLogResponseDto {
     private Long ecoPointContainerId;
     private LocalDateTime scannedAt;
     private Integer ecoCoinsEarned;
+    private Integer wasteWeightGrams;
 }
 
 ========================================
@@ -2250,7 +2255,9 @@ public class EcoPointContainerMapper {
                 .title(dto.getTitle())
                 .location(geometryMapper.fromWkt(dto.getLocationWkt()))
                 .wasteType(dto.getWasteType())
-                .fullnessPercentage(dto.getFullnessPercentage())
+                .capacityGrams(dto.getCapacityGrams())
+                .currentWeightGrams(0)
+                .fullnessPercentage(0)
                 .isActive(dto.getIsActive())
                 .qrCodeToken(dto.getQrCodeToken())
                 .build();
@@ -2260,9 +2267,9 @@ public class EcoPointContainerMapper {
         entity.setTitle(dto.getTitle());
         entity.setLocation(geometryMapper.fromWkt(dto.getLocationWkt()));
         entity.setWasteType(dto.getWasteType());
-        entity.setFullnessPercentage(dto.getFullnessPercentage());
         entity.setIsActive(dto.getIsActive());
         entity.setQrCodeToken(dto.getQrCodeToken());
+        entity.changeCapacity(dto.getCapacityGrams());
     }
 
     public EcoPointContainerResponseDto toDto(EcoPointContainer entity) {
@@ -2271,6 +2278,8 @@ public class EcoPointContainerMapper {
                 .title(entity.getTitle())
                 .locationWkt(geometryMapper.toWkt(entity.getLocation()))
                 .wasteType(entity.getWasteType())
+                .capacityGrams(entity.getCapacityGrams())
+                .currentWeightGrams(entity.getCurrentWeightGrams())
                 .fullnessPercentage(entity.getFullnessPercentage())
                 .isActive(entity.getIsActive())
                 .qrCodeToken(entity.getQrCodeToken())
@@ -2698,6 +2707,7 @@ public class WasteLogMapper {
                 .ecoPointContainerId(entity.getEcoPointContainer().getId())
                 .scannedAt(entity.getScannedAt())
                 .ecoCoinsEarned(entity.getEcoCoinsEarned())
+                .wasteWeightGrams(entity.getWasteWeightGrams())
                 .build();
     }
 }
@@ -3062,6 +3072,90 @@ public class EcoPointContainer {
     @Size(max = 255, message = "QR token слишком длинный")
     @Column(name = "qr_code_token", nullable = false, unique = true, length = 255)
     private String qrCodeToken;
+
+    @NotNull
+    @Min(1)
+    @Column(name = "capacity_grams", nullable = false)
+    private Integer capacityGrams;
+
+    @NotNull
+    @Min(0)
+    @Column(name = "current_weight_grams", nullable = false)
+    private Integer currentWeightGrams;
+
+
+    public void acceptWaste(int wasteWeightGrams) {
+        if (wasteWeightGrams <= 0) {
+            throw new IllegalArgumentException(
+                    "Waste weight must be greater than zero"
+            );
+        }
+
+        if (capacityGrams == null || capacityGrams <= 0) {
+            throw new IllegalStateException(
+                    "Container capacity is not configured"
+            );
+        }
+
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        long newWeight = (long) currentWeight + wasteWeightGrams;
+
+        if (newWeight > capacityGrams) {
+            throw new IllegalStateException(
+                    "Waste weight exceeds remaining container capacity"
+            );
+        }
+
+        currentWeightGrams = Math.toIntExact(newWeight);
+        recalculateFullness();
+    }
+
+    public void empty() {
+        currentWeightGrams = 0;
+        fullnessPercentage = 0;
+    }
+
+    public void changeCapacity(int newCapacityGrams) {
+        if (newCapacityGrams <= 0) {
+            throw new IllegalArgumentException(
+                    "Container capacity must be greater than zero"
+            );
+        }
+
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        if (currentWeight > newCapacityGrams) {
+            throw new IllegalStateException(
+                    "Capacity cannot be less than current container weight"
+            );
+        }
+
+        capacityGrams = newCapacityGrams;
+        recalculateFullness();
+    }
+    private void recalculateFullness() {
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        if (currentWeight == 0) {
+            fullnessPercentage = 0;
+            return;
+        }
+
+        double percentage =
+                (double) currentWeight / capacityGrams * 100;
+
+        fullnessPercentage = Math.min(
+                100,
+                (int) Math.ceil(percentage)
+        );
+    }
 }
 
 
@@ -3606,6 +3700,11 @@ public class WasteLog {
     @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
     @Column(name = "eco_coins_earned", nullable = false)
     private Integer ecoCoinsEarned;
+
+    @NotNull
+    @Min(0)
+    @Column(name = "waste_weight_grams", nullable = false)
+    private Integer wasteWeightGrams;
 }
 
 
@@ -3816,7 +3915,11 @@ package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.enums.WasteType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -3826,9 +3929,22 @@ public interface EcoPointContainerRepository extends JpaRepository<EcoPointConta
     // 新增：获取所有激活状态的回收箱
     List<EcoPointContainer> findByIsActiveTrue();
     // 新增：根据二维码 token 查询回收箱
-    Optional<EcoPointContainer> findByQrCodeToken(String qrCodeToken);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select c
+        from EcoPointContainer c
+        where c.qrCodeToken = :qrCodeToken
+        """)
+    Optional<EcoPointContainer> findByQrCodeTokenForUpdate(@Param("qrCodeToken") String qrCodeToken);
     long countByIsActiveTrue();
     long countByIsActiveTrueAndFullnessPercentageGreaterThanEqual(Integer fullnessPercentage);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select c
+        from EcoPointContainer c
+        where c.id = :id
+        """)
+    Optional<EcoPointContainer> findByIdForUpdate(@Param("id") Long id);
 }
 
 ========================================
@@ -4534,6 +4650,7 @@ import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -4545,6 +4662,7 @@ public class EcoPointContainerService {
     private final EcoPointContainerRepository ecoPointContainerRepository;
     private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
@@ -4566,7 +4684,15 @@ public class EcoPointContainerService {
 
     @Transactional
     public EcoPointContainerResponseDto update(Long id, EcoPointContainerRequestDto request) {
-        EcoPointContainer entity = getOrThrow(id);
+        EcoPointContainer entity = ecoPointContainerRepository
+                .findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
+                );
+        boolean changesWasteType = entity.getWasteType() != request.getWasteType();
+        if (changesWasteType && entity.getCurrentWeightGrams() > 0) {
+            throw new IllegalStateException("Waste type cannot be changed until container is emptied");
+        }
         ecoPointContainerMapper.updateEntity(entity, request);
         return ecoPointContainerMapper.toDto(ecoPointContainerRepository.save(entity));
     }
@@ -4578,6 +4704,21 @@ public class EcoPointContainerService {
             throw new IllegalStateException("Container with waste history cannot be deleted. Deactivate it instead");
         }
         ecoPointContainerRepository.deleteById(id);
+    }
+
+    @Transactional
+    public EcoPointContainerResponseDto empty(Long id) {
+        EcoPointContainer container = ecoPointContainerRepository
+                        .findByIdForUpdate(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
+                        );
+
+        container.empty();
+        EcoPointContainer saved = ecoPointContainerRepository.save(container);
+        EcoPointContainerResponseDto response = ecoPointContainerMapper.toDto(saved);
+        messagingTemplate.convertAndSend("/topic/eco-containers", response);
+        return response;
     }
 
     private EcoPointContainer getOrThrow(Long id) {
@@ -4630,72 +4771,51 @@ public class EcoPointsContainerActionService {
     }
 
     @Transactional
-    public WasteLogResponseDto processDeposit(WasteDepositRequestDto request) {
+    public WasteLogResponseDto processDeposit(
+            WasteDepositRequestDto request
+    ) {
         User user = currentUserService.getCurrentUserOrThrow();
 
         EcoPointContainer container = containerRepository
-                        .findByQrCodeToken(
-                                request.getQrCodeToken()
-                        )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException("Invalid QR code or container not found")
-                        );
+                .findByQrCodeTokenForUpdate(
+                        request.getQrCodeToken()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Invalid QR code or container not found")
+                );
 
         if (!Boolean.TRUE.equals(container.getIsActive())) {
-            throw new IllegalStateException("Container is not active");
+            throw new IllegalStateException(
+                    "Container is not active"
+            );
         }
-
-        int newFullness = Math.min(
-                100,
-                container.getFullnessPercentage()
-                        + request.getAddedFullnessPercentage()
-        );
-
-        container.setFullnessPercentage(newFullness);
+        container.acceptWaste(request.getWasteWeightGrams());
         containerRepository.save(container);
 
-        /*
-         * Сначала создаём WasteLog, чтобы получить уникальный
-         * id конкретной сдачи отходов.
-         */
         WasteLog log = WasteLog.builder()
                 .user(user)
                 .ecoPointContainer(container)
                 .scannedAt(LocalDateTime.now())
                 .ecoCoinsEarned(0)
+                .wasteWeightGrams(
+                        request.getWasteWeightGrams()
+                )
                 .build();
 
         log = wasteLogRepository.save(log);
 
-        RewardResult reward =
-                gamificationService.rewardForWasteDeposit(
+        RewardResult reward = gamificationService.rewardForWasteDeposit(
                         user.getId(),
                         log.getId(),
                         request.getWasteWeightGrams(),
                         container.getWasteType()
                 );
 
-        log.setEcoCoinsEarned(
-                Math.toIntExact(reward.ecoCoinsEarned())
-        );
+        log.setEcoCoinsEarned(Math.toIntExact(reward.ecoCoinsEarned()));
 
         WasteLog savedLog = wasteLogRepository.save(log);
-
         EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
-
-        messagingTemplate.convertAndSend(
-                "/topic/eco-containers",
-                containerDto
-        );
-
-        if (newFullness >= 90) {
-            messagingTemplate.convertAndSend(
-                    "/topic/admin/alerts",
-                    "Container ID " + container.getId()
-                            + " is " + newFullness
-                            + "% full"
-            );
-        }
+        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
 
         return wasteLogMapper.toDto(savedLog);
     }
@@ -6501,6 +6621,31 @@ CREATE INDEX idx_vacancies_active
 
 CREATE INDEX idx_containers_admin_monitoring
     ON eco_point_containers(is_active, fullness_percentage);
+
+========================================
+File: ./green/src/main/resources/db/migration/V9__container_weight.sql
+========================================
+
+ALTER TABLE eco_point_containers
+    ADD COLUMN capacity_grams INTEGER NOT NULL DEFAULT 10000,
+    ADD COLUMN current_weight_grams INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE eco_point_containers
+    ADD CONSTRAINT chk_container_capacity_positive
+        CHECK (capacity_grams > 0),
+
+    ADD CONSTRAINT chk_container_current_weight_range
+        CHECK (
+            current_weight_grams >= 0
+            AND current_weight_grams <= capacity_grams
+        );
+
+ALTER TABLE waste_logs
+    ADD COLUMN waste_weight_grams INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE waste_logs
+    ADD CONSTRAINT chk_waste_log_weight_non_negative
+        CHECK (waste_weight_grams >= 0)
 
 ========================================
 File: ./green/src/test/java/com/example/green/GreenApplicationTests.java

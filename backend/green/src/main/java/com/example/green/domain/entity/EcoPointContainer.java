@@ -44,4 +44,88 @@ public class EcoPointContainer {
     @Size(max = 255, message = "QR token слишком длинный")
     @Column(name = "qr_code_token", nullable = false, unique = true, length = 255)
     private String qrCodeToken;
+
+    @NotNull
+    @Min(1)
+    @Column(name = "capacity_grams", nullable = false)
+    private Integer capacityGrams;
+
+    @NotNull
+    @Min(0)
+    @Column(name = "current_weight_grams", nullable = false)
+    private Integer currentWeightGrams;
+
+
+    public void acceptWaste(int wasteWeightGrams) {
+        if (wasteWeightGrams <= 0) {
+            throw new IllegalArgumentException(
+                    "Waste weight must be greater than zero"
+            );
+        }
+
+        if (capacityGrams == null || capacityGrams <= 0) {
+            throw new IllegalStateException(
+                    "Container capacity is not configured"
+            );
+        }
+
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        long newWeight = (long) currentWeight + wasteWeightGrams;
+
+        if (newWeight > capacityGrams) {
+            throw new IllegalStateException(
+                    "Waste weight exceeds remaining container capacity"
+            );
+        }
+
+        currentWeightGrams = Math.toIntExact(newWeight);
+        recalculateFullness();
+    }
+
+    public void empty() {
+        currentWeightGrams = 0;
+        fullnessPercentage = 0;
+    }
+
+    public void changeCapacity(int newCapacityGrams) {
+        if (newCapacityGrams <= 0) {
+            throw new IllegalArgumentException(
+                    "Container capacity must be greater than zero"
+            );
+        }
+
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        if (currentWeight > newCapacityGrams) {
+            throw new IllegalStateException(
+                    "Capacity cannot be less than current container weight"
+            );
+        }
+
+        capacityGrams = newCapacityGrams;
+        recalculateFullness();
+    }
+    private void recalculateFullness() {
+        int currentWeight = currentWeightGrams == null
+                ? 0
+                : currentWeightGrams;
+
+        if (currentWeight == 0) {
+            fullnessPercentage = 0;
+            return;
+        }
+
+        double percentage =
+                (double) currentWeight / capacityGrams * 100;
+
+        fullnessPercentage = Math.min(
+                100,
+                (int) Math.ceil(percentage)
+        );
+    }
 }

@@ -37,6 +37,13 @@ public class EcoPointContainerController {
         return ecoPointContainerService.create(request);
     }
 
+    @PostMapping("/{id}/empty")
+    public EcoPointContainerResponseDto empty(
+            @PathVariable @Positive Long id
+    ) {
+        return ecoPointContainerService.empty(id);
+    }
+
     @PutMapping("/{id}")
     public EcoPointContainerResponseDto update(@PathVariable @Positive Long id,
                                                @RequestBody @Valid EcoPointContainerRequestDto request) {
