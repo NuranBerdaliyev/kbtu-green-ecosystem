@@ -5,9 +5,11 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VacancyResponseDto {
     private Long id;
-    private Long hrManagerId;
+    private Long companyId;
     private String companyName;
+    private Long hrManagerId;
     private String title;
     private String description;
-    private Boolean isPartnerVacancy;
+    private Boolean partnerCompany;
+    private Boolean isActive;
 }

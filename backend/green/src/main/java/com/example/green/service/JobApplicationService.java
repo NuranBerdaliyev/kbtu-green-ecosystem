@@ -1,17 +1,22 @@
 package com.example.green.service;
 
 import com.example.green.api.dto.request.JobApplicationRequestDto;
+import com.example.green.api.dto.request.JobApplicationStatusRequestDto;
+import com.example.green.api.dto.response.CandidateResponseDto;
 import com.example.green.api.dto.response.JobApplicationResponseDto;
+import com.example.green.api.error.ForbiddenException;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.JobApplicationMapper;
 import com.example.green.domain.entity.JobApplication;
 import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.Vacancy;
+import com.example.green.domain.enums.CandidateSort;
+import com.example.green.domain.enums.Role;
 import com.example.green.domain.repository.JobApplicationRepository;
-import com.example.green.domain.repository.UserRepository;
 import com.example.green.domain.repository.VacancyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,45 +25,115 @@ import java.util.List;
 public class JobApplicationService {
     private final JobApplicationRepository jobApplicationRepository;
     private final VacancyRepository vacancyRepository;
-    private final UserRepository userRepository;
     private final JobApplicationMapper jobApplicationMapper;
+    private final CurrentUserService currentUserService;
+    private final GamificationService gamificationService;
 
-    public List<JobApplicationResponseDto> findAll() {
-        return jobApplicationRepository.findAll().stream()
+    @Transactional
+    public JobApplicationResponseDto apply(Long vacancyId, JobApplicationRequestDto request) {
+        User student = requireStudent();
+        Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        if (!Boolean.TRUE.equals(vacancy.getIsActive())) {
+            throw new IllegalStateException("Vacancy is not active");
+        }
+        if (!Boolean.TRUE.equals(vacancy.getCompany().getIsPartner())) {
+            throw new IllegalStateException("Vacancy company is not a partner");
+        }
+        if (jobApplicationRepository.existsByVacancyIdAndStudentId(vacancyId, student.getId())) {
+            throw new IllegalStateException("Student already applied to this vacancy");
+        }
+
+        JobApplication application = jobApplicationMapper.toEntity(request.getCoverLetter(), vacancy, student);
+        return jobApplicationMapper.toDto(jobApplicationRepository.save(application));
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobApplicationResponseDto> findMyApplications() {
+        User student = requireStudent();
+        return jobApplicationRepository
+                .findByStudentIdOrderByAppliedAtDesc(
+                        student.getId()
+                )
+                .stream()
                 .map(jobApplicationMapper::toDto)
                 .toList();
     }
 
-    public JobApplicationResponseDto findById(Long id) {
-        return jobApplicationMapper.toDto(getJobApplicationOrThrow(id));
+    @Transactional(readOnly = true)
+    public List<CandidateResponseDto> findCandidates(Long vacancyId, CandidateSort sort) {
+        Vacancy vacancy = getVacancyOrThrow(vacancyId);
+        requireVacancyOwner(vacancy);
+        CandidateSort effectiveSort = sort == null ? CandidateSort.ESG_DESC : sort;
+        List<JobApplication> applications = switch (effectiveSort) {
+            case ESG_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByStudent_EsgRatingDescAppliedAtAsc(
+                                    vacancyId
+                            );
+
+            case APPLIED_AT_DESC ->
+                    jobApplicationRepository
+                            .findByVacancyIdOrderByAppliedAtDesc(vacancyId);
+        };
+        return applications.stream()
+                .map(application -> {
+                    Integer esg = application
+                            .getStudent()
+                            .getEsgRating();
+
+                    boolean recommended =
+                            gamificationService.isRecommended(
+                                    application.getStudent()
+                            );
+
+                    return jobApplicationMapper.toCandidateDto(
+                            application,
+                            recommended
+                    );
+                })
+                .toList();
     }
 
-    public JobApplicationResponseDto create(JobApplicationRequestDto request) {
-        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
-        User student = getUserOrThrow(request.getStudentId());
-        JobApplication saved = jobApplicationRepository.save(jobApplicationMapper.toEntity(request, vacancy, student));
-        return jobApplicationMapper.toDto(saved);
+    @Transactional
+    public CandidateResponseDto changeStatus(Long applicationId, JobApplicationStatusRequestDto request) {
+        JobApplication application = getApplicationOrThrow(applicationId);
+        requireVacancyOwner(application.getVacancy());
+        application.changeStatus(request.getStatus());
+
+        JobApplication saved = jobApplicationRepository.save(application);
+        Integer esg = saved.getStudent().getEsgRating();
+        boolean recommended =
+                gamificationService.isRecommended(
+                        saved.getStudent()
+                );
+
+        return jobApplicationMapper.toCandidateDto(saved, recommended);
     }
 
-    public JobApplicationResponseDto update(Long id, JobApplicationRequestDto request) {
-        JobApplication entity = getJobApplicationOrThrow(id);
-        Vacancy vacancy = getVacancyOrThrow(request.getVacancyId());
-        User student = getUserOrThrow(request.getStudentId());
-        jobApplicationMapper.updateEntity(entity, request, vacancy, student);
-        JobApplication saved = jobApplicationRepository.save(entity);
-        return jobApplicationMapper.toDto(saved);
-    }
-
-    public void delete(Long id) {
-        if (!jobApplicationRepository.existsById(id)) {
-            throw new ResourceNotFoundException("JobApplication not found: id=" + id);
+    private User requireStudent() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.STUDENT) {
+            throw new ForbiddenException("Only students can apply for vacancies");
         }
-        jobApplicationRepository.deleteById(id);
+
+        return user;
     }
 
-    private JobApplication getJobApplicationOrThrow(Long id) {
-        return jobApplicationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("JobApplication not found: id=" + id));
+    private User requireHr() {
+        User user = currentUserService.getCurrentUserOrThrow();
+        if (user.getRole() != Role.HR) {
+            throw new ForbiddenException("Only HR users can perform this action");
+        }
+
+        return user;
+    }
+
+    private void requireVacancyOwner(Vacancy vacancy) {
+        User hr = requireHr();
+
+        if (!vacancy.getHrManager().getId().equals(hr.getId())) {
+            throw new ForbiddenException("Only vacancy owner can access its applications");
+        }
     }
 
     private Vacancy getVacancyOrThrow(Long id) {
@@ -66,8 +141,11 @@ public class JobApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Vacancy not found: id=" + id));
     }
 
-    private User getUserOrThrow(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
+    private JobApplication getApplicationOrThrow(Long id) {
+        return jobApplicationRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("JobApplication not found: id=" + id)
+                );
     }
 }

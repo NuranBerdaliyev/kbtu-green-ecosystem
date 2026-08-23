@@ -1,3 +1,25 @@
+app:
+  auth:
+    jwt-secret: "replace-with-very-long-secret-key-at-least-32-chars"
+    access-ttl-seconds: 900
+    refresh-ttl-seconds: 1209600
+  gamification:
+    recommended-esg-threshold: 70
+
+    trip:
+      coins-per-km: 2
+      co2-kg-per-passenger-km: 0.12
+      esg-per-completed-trip: 2
+
+    waste:
+      grams-per-coin: 100
+      esg-per-deposit: 1
+      plastic-co2-kg-per-kg: 1.5
+      paper-co2-kg-per-kg: 0.9
+      glass-co2-kg-per-kg: 0.3
+      battery-co2-kg-per-kg: 2.0
+server:
+  port: 65535
 spring: #application in dev mode
   datasource: #datasource
     url: jdbc:postgresql://localhost:5432/kbtu_green_ecosystem #url for docker container's database

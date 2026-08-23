@@ -15,21 +15,21 @@ public class TripParticipant {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Trip обязателен")
+    @NotNull(message = "Trip cannot be blank")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
-    @NotNull(message = "Пассажир обязателен")
+    @NotNull(message = "Passenger cannot be blank")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "passenger_id", nullable = false)
     private User passenger;
 
-    @NotNull(message = "Время присоединения обязательно")
-    @Column(nullable = false)
+    @NotNull(message = "joinedAt cannot be blank")
+    @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
-    @NotNull(message = "isCancelled обязателен")
-    @Column(nullable = false)
+    @NotNull(message = "isCancelled cannot be blank")
+    @Column(name = "is_cancelled", nullable = false)
     private Boolean isCancelled;
 }

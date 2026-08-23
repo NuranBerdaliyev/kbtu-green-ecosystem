@@ -8,4 +8,5 @@ import java.util.List;
 public interface WasteLogRepository extends JpaRepository<WasteLog, Long> {
     List<WasteLog> findByUserId(Long userId);
     List<WasteLog> findByEcoPointContainerId(Long ecoPointContainerId);
+    boolean existsByEcoPointContainerId(Long ecoPointContainerId);
 }

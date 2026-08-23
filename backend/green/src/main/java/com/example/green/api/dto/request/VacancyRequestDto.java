@@ -8,11 +8,7 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VacancyRequestDto {
     @NotNull
-    private Long hrManagerId;
-
-    @NotBlank
-    @Size(max = 255)
-    private String companyName;
+    private Long companyId;
 
     @NotBlank
     @Size(max = 255)
@@ -20,7 +16,4 @@ public class VacancyRequestDto {
 
     @NotBlank
     private String description;
-
-    @NotNull
-    private Boolean isPartnerVacancy;
 }
