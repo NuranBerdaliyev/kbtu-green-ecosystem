@@ -762,7 +762,9 @@ import com.example.green.api.dto.request.ProfileRequestDto;
 import com.example.green.api.dto.response.ProfileResponseDto;
 import com.example.green.service.ProfileService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -772,15 +774,20 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
-    @GetMapping("/{userId}")
-    public ProfileResponseDto getByUserId(@PathVariable Long userId) {
-        return profileService.getByUserId(userId);
+    @GetMapping("/me")
+    public ProfileResponseDto getMyProfile() {
+        return profileService.getMyProfile();
     }
 
-    @PutMapping("/{userId}")
-    public ProfileResponseDto upsertByUserId(@PathVariable Long userId,
-                                             @Valid @RequestBody ProfileRequestDto request) {
-        return profileService.upsertByUserId(userId, request);
+    @PutMapping("/me")
+    public ProfileResponseDto updateMyProfile(@Valid @RequestBody ProfileRequestDto request) {
+        return profileService.upsertMyProfile(request);
+    }
+
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProfileResponseDto getByUserId(@PathVariable @Positive Long userId) {
+        return profileService.getByUserId(userId);
     }
 }
 
@@ -1491,35 +1498,6 @@ public class WasteDepositRequestDto {
     @Min(1)
     private Integer wasteWeightGrams;
 }
-
-========================================
-File: ./green/src/main/java/com/example/green/api/dto/request/WasteLogRequestDto.java
-========================================
-
-package com.example.green.api.dto.request;
-
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-
-import java.time.LocalDateTime;
-
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class WasteLogRequestDto {
-    @NotNull
-    private Long userId;
-
-    @NotNull
-    private Long ecoPointContainerId;
-
-    @NotNull
-    private LocalDateTime scannedAt;
-
-    @NotNull
-    @Min(0)
-    private Integer ecoCoinsEarned;
-}
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/AchievementResponseDto.java
@@ -2707,31 +2685,12 @@ File: ./green/src/main/java/com/example/green/api/mapper/WasteLogMapper.java
 
 package com.example.green.api.mapper;
 
-import com.example.green.api.dto.request.WasteLogRequestDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
-import com.example.green.domain.entity.EcoPointContainer;
-import com.example.green.domain.entity.User;
 import com.example.green.domain.entity.WasteLog;
 import org.springframework.stereotype.Component;
 
 @Component
 public class WasteLogMapper {
-    public WasteLog toEntity(WasteLogRequestDto dto, User user, EcoPointContainer ecoPointContainer) {
-        return WasteLog.builder()
-                .user(user)
-                .ecoPointContainer(ecoPointContainer)
-                .scannedAt(dto.getScannedAt())
-                .ecoCoinsEarned(dto.getEcoCoinsEarned())
-                .build();
-    }
-
-    public void updateEntity(WasteLog entity, WasteLogRequestDto dto, User user, EcoPointContainer ecoPointContainer) {
-        entity.setUser(user);
-        entity.setEcoPointContainer(ecoPointContainer);
-        entity.setScannedAt(dto.getScannedAt());
-        entity.setEcoCoinsEarned(dto.getEcoCoinsEarned());
-    }
-
     public WasteLogResponseDto toDto(WasteLog entity) {
         return WasteLogResponseDto.builder()
                 .id(entity.getId())
