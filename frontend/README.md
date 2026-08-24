@@ -33,55 +33,56 @@ no CORS setup to do while developing. The proxy lives in `vite.config.js`.
 
 ```
 src/
-├── api/            HTTP layer — one file per backend module
-│   ├── http.js     axios instance, JWT header, refresh on 401
-│   ├── auth.js     login / register / me
-│   ├── trips.js    carpool (stage 4)
-│   ├── ecoWaste.js bins and deposits (stage 5)
-│   ├── career.js   companies and vacancies (stage 6)
-│   └── gamification.js  EcoCoins, ESG, leaderboard (stage 7)
+├── api/            one file per backend area; nothing else calls axios
 ├── assets/         base.css holds every design token
 ├── components/
-│   ├── common/     BaseButton, BaseInput, StagePlaceholder
-│   └── layout/     AppHeader
-├── composables/    reusable logic (useMap, useWebSocket, …)
+│   ├── common/     BaseButton, BaseInput, BaseTextarea, StateBlock,
+│   │               StatusBadge, FullnessBar, PageHeader
+│   ├── carpool/    TripCard
+│   ├── layout/     AppHeader
+│   └── map/        LeafletMap
+├── composables/    useAsync, useEcoContainerSocket
 ├── layouts/        DefaultLayout (app shell), AuthLayout (login/register)
 ├── router/         routes.js (route table) + index.js (guards)
-├── stores/         Pinia — auth, gamification
-├── utils/          tokenStorage, constants, format
+├── stores/         Pinia — auth
+├── utils/          tokenStorage, constants, geo, format
 └── views/          one folder per module, mirrors the routes
 ```
 
-## Conventions
+## API contract
 
-- **No component talks to axios directly.** Views call a store or an `api/*`
-  function. This keeps the API contract in one place when the backend changes.
-- **Tokens live only in `utils/tokenStorage.js`.** Nothing else touches
-  `localStorage`.
-- **No hard-coded colours or fonts.** Use the CSS variables in
-  `assets/base.css`; if a token is missing, add it there.
-- **Numbers use `.metric`** so EcoCoins and CO₂ values line up in columns.
-- Routes are named — link with `:to="{ name: 'trips' }"`, never a raw string.
-- Route access is declared in `router/routes.js` meta: `requiresAuth`, `roles`.
+Verified against the controllers on `main`. **Three different prefixes** — the
+axios layer has one client per prefix, see `src/api/http.js`.
 
-## Environment variables
+| Area             | Base path                  | File                      |
+| ---------------- | -------------------------- | ------------------------- |
+| Auth (permitAll) | `/auth`                    | `src/api/auth.js`         |
+| Profile          | `/profiles`                | `src/api/profile.js`      |
+| Carpool          | `/api/carpool/trips`       | `src/api/trips.js`        |
+| Eco Waste        | `/api/eco-points`          | `src/api/ecoWaste.js`     |
+| Career           | `/api/career/*`            | `src/api/career.js`       |
+| Gamification     | `/api/gamification`        | `src/api/gamification.js` |
+| Admin            | `/api/admin`, `/api/users` | `src/api/admin.js`        |
 
-`.env.development` and `.env.production` are committed. Put personal overrides
-in `.env.local` (git-ignored).
+The backend listens on **port 65535** (`application-dev.yaml`) and has no CORS
+configuration, so the Vite proxy is required.
 
-| Variable            | Purpose                                               |
-| ------------------- | ----------------------------------------------------- |
-| `VITE_API_BASE_URL` | REST base URL (`/api` in dev, full URL in production) |
-| `VITE_WS_URL`       | WebSocket endpoint used by the Eco Waste module       |
+### WebSocket
 
-## Open questions for the backend team (stage 2)
+SockJS + STOMP at `/ws-green`. Topics: `/topic/eco-containers` (updated
+container after each deposit) and `/topic/admin/alerts` (string, fires past
+90% full). Wrapped in `src/composables/useEcoContainerSocket.js`.
 
-1. Are controllers served under `/api/**`, or should the Vite proxy strip the
-   prefix?
-2. Login response shape — expected `{ accessToken, refreshToken }`.
-3. Refresh endpoint — expected `POST /auth/refresh` with `{ refreshToken }`.
-4. Current user endpoint — expected `GET /users/me` returning
-   `{ id, firstName, lastName, email, roles: [] }`.
-5. Role names — the frontend assumes `ROLE_STUDENT`, `ROLE_STAFF`, `ROLE_HR`,
-   `ROLE_ADMIN` (see `utils/constants.js`).
-6. Error response shape — the axios layer reads `response.data.message`.
+### Conventions
+
+- `useAsync()` gives every screen loading / error / empty / data without
+  try-catch in the view. Pair it with `StateBlock`.
+- Geometry is WKT `POINT(lon lat)` — longitude first. Always use
+  `src/utils/geo.js`.
+- Spring `Page` responses are `{ content, totalPages, number, ... }`; plain
+  list endpoints return arrays. Check which one you are calling.
+
+## Stage 2 design
+
+See [`docs/STAGE-2-FRONTEND.md`](docs/STAGE-2-FRONTEND.md) for the navigation
+map, screen specs, and the open questions for the backend team.

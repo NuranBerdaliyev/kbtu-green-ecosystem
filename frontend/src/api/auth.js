@@ -1,9 +1,11 @@
-import http from './http'
+import { rootHttp } from './http'
 
-// Paths are placeholders until the API contract is fixed in stage 2.
+/**
+ * AuthController — /auth (no /api prefix, and the only permitAll path).
+ * All three return AuthResponseDto.
+ */
 export const authApi = {
-  register: (payload) => http.post('/auth/register', payload).then((r) => r.data),
-  login: (credentials) => http.post('/auth/login', credentials).then((r) => r.data),
-  logout: () => http.post('/auth/logout'),
-  me: () => http.get('/users/me').then((r) => r.data),
+  register: (payload) => rootHttp.post('/auth/register', payload).then((r) => r.data),
+  login: (credentials) => rootHttp.post('/auth/login', credentials).then((r) => r.data),
+  refresh: (refreshToken) => rootHttp.post('/auth/refresh', { refreshToken }).then((r) => r.data),
 }

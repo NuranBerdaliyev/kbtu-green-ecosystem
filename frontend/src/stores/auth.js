@@ -1,85 +1,106 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { authApi } from '@/api/auth'
+import { gamificationApi } from '@/api/gamification'
 import { tokenStorage } from '@/utils/tokenStorage'
 
+
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
+  const identity = ref(tokenStorage.getIdentity())
+  const stats = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const fieldErrors = ref({})
 
-  const isAuthenticated = computed(() => Boolean(user.value ?? tokenStorage.getAccess()))
-  const roles = computed(() => user.value?.roles ?? [])
-  const hasRole = (role) => roles.value.includes(role)
+  const isAuthenticated = computed(() => Boolean(identity.value && tokenStorage.getAccess()))
+  const role = computed(() => identity.value?.role ?? null)
+  const userId = computed(() => identity.value?.userId ?? null)
+  const fullName = computed(() => stats.value?.fullName ?? '')
+  const firstName = computed(() => fullName.value.split(' ')[0] ?? '')
+  const hasRole = (...allowed) => allowed.includes(role.value)
+
+  function captureError(e) {
+    error.value = e.message
+    fieldErrors.value = e.fieldErrors ?? {}
+  }
+
+  function reset() {
+    error.value = null
+    fieldErrors.value = {}
+  }
+
+  async function loadStats() {
+    try {
+      stats.value = await gamificationApi.me()
+    } catch {
+      // A failed stats call must not block the app; the header just shows 0.
+    }
+  }
 
   async function login(credentials) {
     loading.value = true
-    error.value = null
+    reset()
     try {
-      const tokens = await authApi.login(credentials)
-      tokenStorage.set(tokens)
-      await fetchCurrentUser()
+      const auth = await authApi.login(credentials)
+      tokenStorage.set(auth)
+      identity.value = tokenStorage.getIdentity()
+      await loadStats()
       return true
     } catch (e) {
-      error.value = e.message
+      captureError(e)
       return false
     } finally {
       loading.value = false
     }
   }
 
+  /** Register also returns tokens, so the user lands signed in. */
   async function register(payload) {
     loading.value = true
-    error.value = null
+    reset()
     try {
-      await authApi.register(payload)
+      const auth = await authApi.register(payload)
+      tokenStorage.set(auth)
+      identity.value = tokenStorage.getIdentity()
+      await loadStats()
       return true
     } catch (e) {
-      error.value = e.message
+      captureError(e)
       return false
     } finally {
       loading.value = false
     }
   }
 
-  async function fetchCurrentUser() {
-    if (!tokenStorage.getAccess()) return null
-    user.value = await authApi.me()
-    return user.value
-  }
-
-  /** Called once on app start so a page refresh keeps the session. */
   async function restoreSession() {
-    if (!tokenStorage.getAccess() || user.value) return
-    try {
-      await fetchCurrentUser()
-    } catch {
-      tokenStorage.clear()
-      user.value = null
-    }
+    if (!tokenStorage.getAccess()) return
+    identity.value ??= tokenStorage.getIdentity()
+    if (!stats.value) await loadStats()
   }
 
-  async function logout() {
-    try {
-      await authApi.logout()
-    } catch {
-      // Logging out locally matters more than the server call succeeding.
-    }
+  function logout() {
+    // The backend has no /auth/logout — refresh tokens are dropped client-side.
     tokenStorage.clear()
-    user.value = null
+    identity.value = null
+    stats.value = null
   }
 
   return {
-    user,
+    identity,
+    stats,
     loading,
     error,
+    fieldErrors,
     isAuthenticated,
-    roles,
+    role,
+    userId,
+    fullName,
+    firstName,
     hasRole,
     login,
     register,
     logout,
-    fetchCurrentUser,
+    loadStats,
     restoreSession,
   }
 })

@@ -1,83 +1,100 @@
 import axios from 'axios'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? '/api'
-
-/** Main client. Every request carries the access token if we have one. */
-export const http = axios.create({
-  baseURL,
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
-})
-
 /**
- * Bare client without interceptors — used only to refresh the token,
- * otherwise a failing refresh would trigger itself in a loop.
+ * The backend uses two different path prefixes:
+ *   /api/...   — most controllers
+ *   /auth/...  — AuthController (also the only permitAll path)
+ *   /profiles  — ProfileController
+ * So we keep two clients. `http` covers /api, `rootHttp` covers the rest.
  */
-const plain = axios.create({ baseURL, timeout: 15000 })
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const rootBase = import.meta.env.VITE_ROOT_BASE_URL ?? ''
 
-http.interceptors.request.use((config) => {
-  const token = tokenStorage.getAccess()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+function createClient(baseURL) {
+  return axios.create({ baseURL, timeout: 15000, headers: { 'Content-Type': 'application/json' } })
+}
+
+export const http = createClient(apiBase)
+export const rootHttp = createClient(rootBase)
+
+/** No interceptors — refreshing must not trigger itself. */
+const plain = createClient(rootBase)
 
 let refreshing = null
 
 function forceLogout() {
   tokenStorage.clear()
-  // Full reload on forced logout: clears every store at once.
-  if (window.location.pathname !== '/login') {
-    window.location.assign('/login')
-  }
+  if (window.location.pathname !== '/login') window.location.assign('/login')
 }
 
-http.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const { response, config } = error
+function attachToken(config) {
+  const token = tokenStorage.getAccess()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+}
 
-    if (!response) {
-      // Network error / backend not running.
-      return Promise.reject(new Error('Сервер недоступен. Проверьте подключение.'))
-    }
+function normaliseError(error) {
+  const { response } = error
+  if (!response) return new Error('Сервер недоступен. Проверьте, что backend запущен.')
 
-    if (response.status === 401 && !config._retried) {
-      const refreshToken = tokenStorage.getRefresh()
-      if (!refreshToken) {
-        forceLogout()
-        return Promise.reject(error)
-      }
+  // ApiErrorResponse: { timestamp, status, error, message, path, validationErrors }
+  const body = response.data ?? {}
+  return Object.assign(new Error(body.message ?? 'Что-то пошло не так. Попробуйте ещё раз.'), {
+    status: response.status,
+    fieldErrors: body.validationErrors ?? {},
+  })
+}
 
-      config._retried = true
-      // Share one refresh call between all requests that failed at the same time.
-      refreshing ??= plain
-        .post('/auth/refresh', { refreshToken })
-        .then(({ data }) => {
-          tokenStorage.set(data)
-          return data.accessToken
-        })
-        .catch((err) => {
+function installInterceptors(client) {
+  client.interceptors.request.use(attachToken)
+
+  client.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const { response, config } = error
+
+      // Never try to refresh a failing auth call.
+      const isAuthCall = config?.url?.startsWith('/auth')
+
+      if (response?.status === 401 && config && !config._retried && !isAuthCall) {
+        const refreshToken = tokenStorage.getRefresh()
+        if (!refreshToken) {
           forceLogout()
-          throw err
-        })
-        .finally(() => {
-          refreshing = null
-        })
+          return Promise.reject(normaliseError(error))
+        }
 
-      try {
-        const accessToken = await refreshing
-        config.headers.Authorization = `Bearer ${accessToken}`
-        return http(config)
-      } catch {
-        return Promise.reject(error)
+        config._retried = true
+        // One shared refresh for every request that failed at the same moment.
+        refreshing ??= plain
+          .post('/auth/refresh', { refreshToken })
+          .then(({ data }) => {
+            tokenStorage.set(data)
+            return data.accessToken
+          })
+          .catch((err) => {
+            forceLogout()
+            throw err
+          })
+          .finally(() => {
+            refreshing = null
+          })
+
+        try {
+          const accessToken = await refreshing
+          config.headers.Authorization = `Bearer ${accessToken}`
+          return client(config)
+        } catch {
+          return Promise.reject(normaliseError(error))
+        }
       }
-    }
 
-    // Normalise the backend error shape agreed in stage 2.
-    const message = response.data?.message ?? 'Что-то пошло не так. Попробуйте ещё раз.'
-    return Promise.reject(Object.assign(new Error(message), { status: response.status }))
-  },
-)
+      return Promise.reject(normaliseError(error))
+    },
+  )
+}
+
+installInterceptors(http)
+installInterceptors(rootHttp)
 
 export default http

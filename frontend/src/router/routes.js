@@ -7,24 +7,12 @@ import { ROLES } from '@/utils/constants'
  *   title        — used for document.title and the page header
  */
 export const routes = [
-  {
-    path: '/',
-    component: () => import('@/layouts/AuthLayout.vue'),
-    children: [
-      {
-        path: 'login',
-        name: 'login',
-        component: () => import('@/views/auth/LoginView.vue'),
-        meta: { title: 'Вход', guestOnly: true },
-      },
-      {
-        path: 'register',
-        name: 'register',
-        component: () => import('@/views/auth/RegisterView.vue'),
-        meta: { title: 'Регистрация', guestOnly: true },
-      },
-    ],
-  },
+  /*
+   * Order matters. Both blocks below are mounted at "/", and Vue Router
+   * resolves ties by declaration order. With AuthLayout first, visiting "/"
+   * matched the auth parent with no child route and rendered a blank panel.
+   * DefaultLayout must therefore come first so "/" resolves to Home.
+   */
   {
     path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
@@ -62,12 +50,6 @@ export const routes = [
         name: 'eco-map',
         component: () => import('@/views/ecowaste/EcoMapView.vue'),
         meta: { title: 'Карта контейнеров', requiresAuth: true },
-      },
-      {
-        path: 'eco-bins/:id',
-        name: 'eco-bin',
-        component: () => import('@/views/ecowaste/EcoBinView.vue'),
-        meta: { title: 'Контейнер', requiresAuth: true },
       },
       {
         path: 'deposit',
@@ -116,12 +98,68 @@ export const routes = [
         meta: { title: 'Достижения', requiresAuth: true },
       },
 
+      // Stage 6 — HR workspace
+      {
+        path: 'hr/company',
+        name: 'my-company',
+        component: () => import('@/views/hr/MyCompanyView.vue'),
+        meta: { title: 'Мои компании', requiresAuth: true, roles: [ROLES.HR] },
+      },
+      {
+        path: 'hr/vacancies',
+        name: 'my-vacancies',
+        component: () => import('@/views/hr/MyVacanciesView.vue'),
+        meta: { title: 'Мои вакансии', requiresAuth: true, roles: [ROLES.HR] },
+      },
+
       // Stage 8 — Admin
       {
         path: 'admin',
         name: 'admin',
         component: () => import('@/views/admin/AdminDashboardView.vue'),
         meta: { title: 'Админ-панель', requiresAuth: true, roles: [ROLES.ADMIN] },
+      },
+      {
+        path: 'admin/containers',
+        name: 'admin-containers',
+        component: () => import('@/views/admin/AdminContainersView.vue'),
+        meta: { title: 'Контейнеры', requiresAuth: true, roles: [ROLES.ADMIN] },
+      },
+      {
+        path: 'admin/companies',
+        name: 'admin-companies',
+        component: () => import('@/views/admin/AdminCompaniesView.vue'),
+        meta: { title: 'Компании', requiresAuth: true, roles: [ROLES.ADMIN] },
+      },
+      {
+        path: 'admin/users',
+        name: 'admin-users',
+        component: () => import('@/views/admin/AdminUsersView.vue'),
+        meta: { title: 'Пользователи', requiresAuth: true, roles: [ROLES.ADMIN] },
+      },
+      {
+        path: 'admin/waste-logs',
+        name: 'admin-waste-logs',
+        component: () => import('@/views/admin/AdminWasteLogsView.vue'),
+        meta: { title: 'Журнал отходов', requiresAuth: true, roles: [ROLES.ADMIN] },
+      },
+    ],
+  },
+  {
+    path: '/',
+    component: () => import('@/layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: 'login',
+        name: 'login',
+        component: () => import('@/views/auth/LoginView.vue'),
+        meta: { title: 'Вход', guestOnly: true },
+      },
+      {
+        path: 'register',
+        name: 'register',
+        component: () => import('@/views/auth/RegisterView.vue'),
+        meta: { title: 'Регистрация', guestOnly: true },
       },
     ],
   },

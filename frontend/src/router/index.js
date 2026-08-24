@@ -22,8 +22,10 @@ router.beforeEach(async (to) => {
     return { name: 'home' }
   }
 
-  if (to.meta.roles?.length && !to.meta.roles.some((role) => auth.hasRole(role))) {
-    return { name: 'home' }
+  // Role is read from the JWT identity; a role changed by an admin only takes
+  // effect after the user signs in again.
+  if (to.meta.roles?.length && !to.meta.roles.includes(auth.role)) {
+    return { name: 'home', query: { forbidden: to.name } }
   }
 
   return true
