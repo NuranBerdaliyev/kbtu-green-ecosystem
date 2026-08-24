@@ -33,8 +33,9 @@ public class Trip {
     @Column(name = "departure_time", nullable = false)
     private LocalDateTime departureTime;
 
-    @NotNull(message = "Departure location cannot be blank")
-    @Min(value = 1, message = "totalSeats должно быть больше 0")
+    @NotNull
+    @Min(value = 1, message = "Total seats must be at least 1")
+    @Max(value = 8, message = "Total seats cannot exceed 8")
     @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
 
@@ -57,18 +58,14 @@ public class Trip {
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TripParticipant> tripParticipants = new ArrayList<>();
 
+    @NotNull
+    @Min(1)
+    @Max(100_000)
+    @Column(name = "price_eco_coins", nullable = false)
+    private Long priceEcoCoins;
+
     public boolean isTerminal() {
         return tripStatus == TripStatus.COMPLETED || tripStatus == TripStatus.CANCELLED;
-    }
-
-    public boolean isPublished() {
-        return tripStatus == TripStatus.ACTIVE || isTerminal();
-    }
-
-    public void validateMutable() {
-        if (isTerminal()) {
-            throw new IllegalStateException("Trip is immutable in status: " + tripStatus);
-        }
     }
 
     public void changeStatus(TripStatus next) {
@@ -77,36 +74,56 @@ public class Trip {
         }
 
         boolean allowed = switch (tripStatus) {
-            case CREATED -> next == TripStatus.ACTIVE || next == TripStatus.CANCELLED;
-            case ACTIVE -> next == TripStatus.COMPLETED || next == TripStatus.CANCELLED;
+            case CREATED ->
+                    next == TripStatus.PUBLISHED
+                            || next == TripStatus.CANCELLED;
+
+            case PUBLISHED ->
+                    next == TripStatus.IN_PROGRESS
+                            || next == TripStatus.CANCELLED;
+
+            case IN_PROGRESS ->
+                    next == TripStatus.COMPLETED
+                            || next == TripStatus.CANCELLED;
+
             case COMPLETED, CANCELLED -> false;
         };
 
         if (!allowed) {
-            throw new IllegalStateException("Invalid trip status transition: " + tripStatus + " -> " + next);
+            throw new IllegalStateException(
+                    "Invalid trip status transition: "
+                            + tripStatus
+                            + " -> "
+                            + next
+            );
         }
 
-        this.tripStatus = next;
+        tripStatus = next;
     }
 
     public void occupySeat() {
-        validateMutable();
+        if (tripStatus != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Seats can only be occupied in PUBLISHED trips");
+        }
+
         if (availableSeats == null || availableSeats <= 0) {
             throw new IllegalStateException("No available seats");
         }
-        this.availableSeats -= 1;
+
+        availableSeats -= 1;
     }
 
     public void releaseSeat() {
-        validateMutable();
-        if (availableSeats == null || totalSeats == null || availableSeats >= totalSeats) {
-            throw new IllegalStateException("Cannot release seat beyond totalSeats");
+        if (tripStatus != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Seats can only be released in PUBLISHED trips");
         }
-        this.availableSeats += 1;
-    }
-    @AssertTrue(message = "availableSeats cannot be more than totalSeats")
-    public boolean isSeatsValid() {
-        if (availableSeats == null || totalSeats == null) return true;
-        return availableSeats <= totalSeats;
+
+        if (availableSeats == null
+                || totalSeats == null
+                || availableSeats >= totalSeats) {
+            throw new IllegalStateException("Cannot release seat beyond total seats");
+        }
+
+        availableSeats += 1;
     }
 }

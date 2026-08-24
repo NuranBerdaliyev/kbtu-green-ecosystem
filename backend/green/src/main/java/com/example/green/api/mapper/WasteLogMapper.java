@@ -14,6 +14,15 @@ public class WasteLogMapper {
                 .scannedAt(entity.getScannedAt())
                 .ecoCoinsEarned(entity.getEcoCoinsEarned())
                 .wasteWeightGrams(entity.getWasteWeightGrams())
+                .wasteType(entity.getWasteType())
+                .fullnessDeltaPercentage(entity.getFullnessDeltaPercentage())
+                .status(entity.getStatus())
+                .reviewedById(
+                        entity.getReviewedBy() == null
+                                ? null
+                                : entity.getReviewedBy().getId()
+                )
+                .reviewedAt(entity.getReviewedAt())
                 .build();
     }
 }

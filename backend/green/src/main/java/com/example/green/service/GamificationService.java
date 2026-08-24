@@ -33,29 +33,24 @@ public class GamificationService {
     private final GamificationProperties properties;
 
     @Transactional
-    public RewardResult rewardForCompletedTrip(Long userId, Long tripId, double distanceKm) {
+    public RewardResult recordCompletedTripActivity(Long userId, Long tripId, double distanceKm) {
         if (distanceKm <= 0) {
             throw new IllegalArgumentException("Trip distance must be greater than zero");
         }
-
         BigDecimal distance = BigDecimal.valueOf(distanceKm);
-        long coins = distance
-                .multiply(properties.getTrip().getCoinsPerKm())
-                .setScale(0, RoundingMode.HALF_UP)
-                .max(BigDecimal.ONE)
-                .longValueExact();
+        BigDecimal co2Saved = distance
+                .multiply(properties.getTrip().getCo2KgPerPassengerKm())
+                .setScale(3, RoundingMode.HALF_UP);
 
-        BigDecimal co2Saved = distance.multiply(properties.getTrip().getCo2KgPerPassengerKm()).setScale(3, RoundingMode.HALF_UP);
         return applyReward(
                 userId,
                 EcoTransactionSource.TRIP_COMPLETED,
                 tripId,
-                coins,
+                0L,
                 properties.getTrip().getEsgPerCompletedTrip(),
                 co2Saved
         );
     }
-
     @Transactional
     public RewardResult rewardForWasteDeposit(Long userId, Long wasteLogId, int wasteWeightGrams, WasteType wasteType) {
         if (wasteWeightGrams <= 0) {
@@ -121,7 +116,7 @@ public class GamificationService {
     public Page<LeaderboardEntryResponseDto> getLeaderboard(int page, int size) {
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(
-                        Sort.Order.desc("esgRating"), Sort.Order.desc("ecoCoinsBalance"),
+                        Sort.Order.desc("esgRating"),
                         Sort.Order.desc("totalCo2Saved"), Sort.Order.asc("id")
                 )
         );
@@ -138,6 +133,55 @@ public class GamificationService {
                         .toList();
 
         return new PageImpl<>(content, pageable, users.getTotalElements());
+    }
+
+
+    @Transactional
+    public void reserveCarpoolFare(
+            Long passengerId,
+            Long participantId,
+            long amount
+    ) {
+        validateFareReference(participantId, amount);
+
+        applyBalanceOperation(
+                passengerId,
+                EcoTransactionSource.CARPOOL_FARE_RESERVED,
+                participantId,
+                Math.negateExact(amount)
+        );
+    }
+
+    @Transactional
+    public void refundCarpoolFare(
+            Long passengerId,
+            Long participantId,
+            long amount
+    ) {
+        validateFareReference(participantId, amount);
+
+        applyBalanceOperation(
+                passengerId,
+                EcoTransactionSource.CARPOOL_FARE_REFUND,
+                participantId,
+                amount
+        );
+    }
+
+    @Transactional
+    public void creditCarpoolEarning(
+            Long driverId,
+            Long tripId,
+            long amount
+    ) {
+        validateFareReference(tripId, amount);
+
+        applyBalanceOperation(
+                driverId,
+                EcoTransactionSource.CARPOOL_FARE_EARNING,
+                tripId,
+                amount
+        );
     }
 
     private RewardResult applyReward(
@@ -222,7 +266,7 @@ public class GamificationService {
     }
 
     private List<AchievementCode> evaluateAchievements(User user) {
-        long totalActions = ecoTransactionRepository.countByUserId(user.getId());
+        long totalActions = ecoTransactionRepository.countByUserIdAndSourceIn(user.getId(), List.of(EcoTransactionSource.TRIP_COMPLETED, EcoTransactionSource.WASTE_DEPOSIT));
 
         long completedTrips = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.TRIP_COMPLETED);
         long wasteDeposits = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.WASTE_DEPOSIT);
@@ -334,7 +378,6 @@ public class GamificationService {
                 RANKED_ROLES,
                 user.getId(),
                 user.getEsgRating(),
-                user.getEcoCoinsBalance(),
                 user.getTotalCo2Saved()
         );
     }
@@ -347,5 +390,66 @@ public class GamificationService {
         return value == null
                 ? BigDecimal.ZERO
                 : value;
+    }
+
+    private void applyBalanceOperation(
+            Long userId,
+            EcoTransactionSource source,
+            Long referenceId,
+            long ecoCoinsDelta
+    ) {
+        User user = userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found: id=" + userId
+                        )
+                );
+
+        long newBalance = Math.addExact(
+                user.getEcoCoinsBalance(),
+                ecoCoinsDelta
+        );
+
+        if (newBalance < 0) {
+            throw new IllegalStateException(
+                    "Insufficient EcoCoins balance"
+            );
+        }
+
+        user.setEcoCoinsBalance(newBalance);
+        userRepository.save(user);
+
+        EcoTransaction transaction =
+                EcoTransaction.builder()
+                        .user(user)
+                        .source(source)
+                        .referenceId(referenceId)
+                        .ecoCoinsDelta(ecoCoinsDelta)
+                        .esgRatingDelta(0)
+                        .co2SavedDelta(
+                                BigDecimal.ZERO.setScale(3)
+                        )
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+        ecoTransactionRepository.saveAndFlush(transaction);
+    }
+
+    private void validateFareReference(
+            Long referenceId,
+            long amount
+    ) {
+        if (referenceId == null || referenceId <= 0) {
+            throw new IllegalArgumentException(
+                    "Payment referenceId must be positive"
+            );
+        }
+
+        if (amount <= 0) {
+            throw new IllegalArgumentException(
+                    "Carpool fare must be greater than zero"
+            );
+        }
     }
 }

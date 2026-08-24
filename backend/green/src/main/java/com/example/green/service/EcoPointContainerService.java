@@ -7,11 +7,14 @@ import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
 import com.example.green.domain.repository.WasteLogRepository;
+import com.example.green.service.event.EcoPointContainerChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -21,6 +24,7 @@ public class EcoPointContainerService {
     private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
@@ -71,11 +75,17 @@ public class EcoPointContainerService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
                         );
-
+        int previousFullness = container.getFullnessPercentage();
         container.empty();
         EcoPointContainer saved = ecoPointContainerRepository.save(container);
         EcoPointContainerResponseDto response = ecoPointContainerMapper.toDto(saved);
-        messagingTemplate.convertAndSend("/topic/eco-containers", response);
+        eventPublisher.publishEvent(
+                new EcoPointContainerChangedEvent(
+                        response,
+                        previousFullness,
+                        LocalDateTime.now()
+                )
+        );
         return response;
     }
 

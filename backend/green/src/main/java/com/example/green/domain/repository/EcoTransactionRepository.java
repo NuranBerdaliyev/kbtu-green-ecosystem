@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,4 +15,7 @@ public interface EcoTransactionRepository extends JpaRepository<EcoTransaction, 
     Optional<EcoTransaction> findByUserIdAndSourceAndReferenceId(Long userId, EcoTransactionSource source, Long referenceId);
     long countByUserId(Long userId);
     long countByUserIdAndSource(Long userId, EcoTransactionSource source);
+    long countByUserIdAndSourceIn(Long userId, Collection<EcoTransactionSource> sources);
+
 }
+

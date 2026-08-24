@@ -23,6 +23,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.example.green.domain.entity.TripParticipant;
+import com.example.green.domain.enums.TripPaymentStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -51,7 +53,8 @@ public class TripService {
         Point originPoint = buildOriginPoint(request);
 
         List<TripResponseDto> filtered = tripRepository.findAll(sort).stream()
-                .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
+                .filter(t -> t.getTripStatus() == TripStatus.PUBLISHED)
+                .filter(t -> t.getDepartureTime().isAfter(LocalDateTime.now()))
                 .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
                 .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
                 .filter(t -> request.getMinSeats() == null || t.getAvailableSeats() >= request.getMinSeats())
@@ -113,7 +116,6 @@ public class TripService {
     public TripResponseDto updateTrip(Long id, TripRequestDto request) {
         Trip entity = getTripOrThrow(id);
         requireDriver(entity);
-        entity.validateMutable();
         int occupiedSeats = entity.getTotalSeats() - entity.getAvailableSeats();
 
         if (request.getTotalSeats() < occupiedSeats) {
@@ -145,62 +147,152 @@ public class TripService {
         tripRepository.delete(trip);
     }
     @Transactional
-    public TripResponseDto activateStatus(Long id) {
-        Trip trip = getTripOrThrow(id);
+    public TripResponseDto publishStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
+
         requireDriver(trip);
-        trip.changeStatus(TripStatus.ACTIVE);
+
+        if (!trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Expired trip cannot be published");
+        }
+
+        trip.changeStatus(TripStatus.PUBLISHED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
     @Transactional
-    public TripResponseDto cancelStatus (Long id) {
-        Trip trip = getTripOrThrow(id);
+    public TripResponseDto startStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
         requireDriver(trip);
+
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Only PUBLISHED trip can be started");
+        }
+
+        if (trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Trip cannot be started before departure time");
+        }
+
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        if (participants.isEmpty()) {
+            throw new IllegalStateException("Trip cannot be started without passengers");
+        }
+
+        boolean invalidPayment =
+                participants.stream().anyMatch(participant ->
+                        participant.getPaymentStatus() != TripPaymentStatus.RESERVED || participant.getReservedEcoCoins() <= 0);
+
+        if (invalidPayment) {
+            throw new IllegalStateException("Every active passenger must have a reserved fare");
+        }
+
+        trip.changeStatus(TripStatus.IN_PROGRESS);
+        return tripMapper.toDto(tripRepository.save(trip));
+    }
+    @Transactional
+    public TripResponseDto cancelStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
+        requireDriver(trip);
+
+        if (trip.isTerminal()) {
+            throw new IllegalStateException("Terminal trip cannot be cancelled");
+        }
+
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        for (TripParticipant participant : participants) {
+            if (participant.getPaymentStatus() != TripPaymentStatus.RESERVED) {
+                throw new IllegalStateException("Active passenger has invalid payment status");
+            }
+
+            gamificationService.refundCarpoolFare(
+                    participant.getPassenger().getId(),
+                    participant.getId(),
+                    participant.getReservedEcoCoins()
+            );
+
+            participant.refundAndCancel();
+        }
+
+        tripParticipantRepository.saveAll(participants);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
     @Transactional
     public TripResponseDto completeStatus(Long tripId) {
-        Trip trip = getTripOrThrow(tripId);
+        Trip trip = getTripForUpdateOrThrow(tripId);
         requireDriver(trip);
 
-        if (trip.getDepartureTime().isAfter(LocalDateTime.now())) {
-            throw new IllegalStateException(
-                    "Trip cannot be completed before departure time"
-            );
+        if (trip.getTripStatus() != TripStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Only IN_PROGRESS trip can be completed");
         }
 
-        trip.changeStatus(TripStatus.COMPLETED);
-        tripRepository.save(trip);
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        if (participants.isEmpty()) {
+            throw new IllegalStateException("Trip cannot be completed without passengers");
+        }
+
+        for (TripParticipant participant : participants) {
+            if (participant.getPaymentStatus() != TripPaymentStatus.RESERVED) {
+                throw new IllegalStateException("Passenger fare is not reserved");
+            }
+        }
+
+        long totalEarning = participants.stream()
+                .mapToLong(TripParticipant::getReservedEcoCoins)
+                .reduce(0L, Math::addExact);
+
+
+        gamificationService.creditCarpoolEarning(
+                trip.getDriver().getId(),
+                trip.getId(),
+                totalEarning
+        );
+
+        participants.forEach(TripParticipant::settle);
+        tripParticipantRepository.saveAll(participants);
 
         double distanceKm = GeoUtils.distanceKm(
                 trip.getDepartureLocation(),
                 trip.getDestinationLocation()
         );
-
-        gamificationService.rewardForCompletedTrip(
+        gamificationService.recordCompletedTripActivity(
                 trip.getDriver().getId(),
                 trip.getId(),
                 distanceKm
         );
 
-        tripParticipantRepository
-                .findByTripIdAndIsCancelledFalse(trip.getId())
-                .forEach(participant ->
-                        gamificationService.rewardForCompletedTrip(
-                                participant.getPassenger().getId(),
-                                trip.getId(),
-                                distanceKm
-                        )
-                );
+        for (TripParticipant participant : participants) {
+            gamificationService.recordCompletedTripActivity(
+                    participant.getPassenger().getId(),
+                    trip.getId(),
+                    distanceKm
+            );
+        }
 
-        return tripMapper.toDto(trip);
+        trip.changeStatus(TripStatus.COMPLETED);
+        return tripMapper.toDto(tripRepository.save(trip));
     }
-
     private Point buildOriginPoint(TripSearchRequestDto request) {
-        if (request.getOriginLat() == null || request.getOriginLng() == null) {
+        boolean hasLat = request.getOriginLat() != null;
+        boolean hasLng = request.getOriginLng() != null;
+        boolean hasRadius = request.getRadiusKm() != null;
+
+        if (hasLat != hasLng) {
+            throw new IllegalArgumentException("originLat and originLng must be provided together");
+        }
+
+        if (hasRadius && !hasLat) {
+            throw new IllegalArgumentException("originLat and originLng are required when radiusKm is provided");
+        }
+
+        if (!hasLat) {
             return null;
         }
+
         String wkt = "POINT(" + request.getOriginLng() + " " + request.getOriginLat() + ")";
+
         return geometryMapper.fromWkt(wkt);
     }
 
@@ -224,6 +316,12 @@ public class TripService {
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
     }
 
+    private Trip getTripForUpdateOrThrow(Long id) {
+        return tripRepository.findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
+    }
     private User getUserOrThrow(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));

@@ -4,6 +4,7 @@ import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.WasteLogMapper;
 import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.enums.WasteDepositStatus;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,15 @@ public class WasteLogService {
     @Transactional(readOnly = true)
     public WasteLogResponseDto findById(Long id) {
         return wasteLogMapper.toDto(getWasteLogOrThrow(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<WasteLogResponseDto> findPending() {
+        return wasteLogRepository
+                .findByStatusOrderByScannedAtAsc(WasteDepositStatus.PENDING)
+                .stream()
+                .map(wasteLogMapper::toDto)
+                .toList();
     }
 
     private WasteLog getWasteLogOrThrow(Long id) {

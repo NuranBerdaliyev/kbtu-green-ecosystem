@@ -35,10 +35,6 @@ public class GamificationProperties {
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal coinsPerKm = BigDecimal.valueOf(2);
-
-        @NotNull
-        @DecimalMin(value = "0.0", inclusive = false)
         private BigDecimal co2KgPerPassengerKm =
                 BigDecimal.valueOf(0.12);
 
@@ -58,22 +54,28 @@ public class GamificationProperties {
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal plasticCo2KgPerKg =
-                BigDecimal.valueOf(1.5);
+        private BigDecimal plasticCo2KgPerKg = BigDecimal.valueOf(1.5);
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal paperCo2KgPerKg =
-                BigDecimal.valueOf(0.9);
+        private BigDecimal paperCo2KgPerKg = BigDecimal.valueOf(0.9);
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal glassCo2KgPerKg =
-                BigDecimal.valueOf(0.3);
+        private BigDecimal glassCo2KgPerKg = BigDecimal.valueOf(0.3);
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal batteryCo2KgPerKg =
-                BigDecimal.valueOf(2.0);
+        private BigDecimal batteryCo2KgPerKg = BigDecimal.valueOf(2.0);
+
+        @Min(1)
+        private int maxWeightPerDepositGrams = 5000;
+
+        @Min(1)
+        private int maxDailyApprovedWeightGrams = 20000;
+
+        @Min(1)
+        @Max(100)
+        private int alertThresholdPercentage = 90;
 
         public BigDecimal co2Coefficient(WasteType wasteType) {
             return switch (wasteType) {

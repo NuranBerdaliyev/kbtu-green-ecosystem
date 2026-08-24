@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
     long countByRole(Role role);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("""
             select count(u) + 1
             from User u
@@ -31,16 +31,10 @@ public interface UserRepository extends JpaRepository<User, Long>{
                    u.esgRating > :esg
                    or (
                        u.esgRating = :esg
-                       and u.ecoCoinsBalance > :coins
-                   )
-                   or (
-                       u.esgRating = :esg
-                       and u.ecoCoinsBalance = :coins
                        and u.totalCo2Saved > :co2
                    )
                    or (
                        u.esgRating = :esg
-                       and u.ecoCoinsBalance = :coins
                        and u.totalCo2Saved = :co2
                        and u.id < :userId
                    )
@@ -50,7 +44,6 @@ public interface UserRepository extends JpaRepository<User, Long>{
             @Param("roles") Collection<Role> roles,
             @Param("userId") Long userId,
             @Param("esg") Integer esg,
-            @Param("coins") Long coins,
             @Param("co2") BigDecimal co2
     );
 }

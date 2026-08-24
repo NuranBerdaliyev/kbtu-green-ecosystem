@@ -22,6 +22,7 @@ public class TripMapper {
                 .totalSeats(dto.getTotalSeats())
                 .availableSeats(dto.getTotalSeats())
                 .tripStatus(TripStatus.CREATED)
+                .priceEcoCoins(dto.getPriceEcoCoins())
                 .build();
     }
 
@@ -30,6 +31,7 @@ public class TripMapper {
         entity.setDestinationLocation(geometryMapper.fromWkt(dto.getDestinationLocationWkt()));
         entity.setDepartureTime(dto.getDepartureTime());
         entity.setTotalSeats(dto.getTotalSeats());
+        entity.setPriceEcoCoins(dto.getPriceEcoCoins());
     }
 
     public TripResponseDto toDto(Trip entity) {
@@ -42,6 +44,7 @@ public class TripMapper {
                 .totalSeats(entity.getTotalSeats())
                 .availableSeats(entity.getAvailableSeats())
                 .tripStatus(entity.getTripStatus())
+                .priceEcoCoins(entity.getPriceEcoCoins())
                 .build();
     }
 }

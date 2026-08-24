@@ -4,6 +4,7 @@ import com.example.green.api.dto.response.TripParticipantResponseDto;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.TripParticipant;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripPaymentStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -14,8 +15,10 @@ public class TripParticipantMapper {
         return TripParticipant.builder()
                 .trip(trip)
                 .passenger(passenger)
-                .joinedAt(LocalDateTime.now()) // только сервер
-                .isCancelled(false)            // только сервер
+                .joinedAt(LocalDateTime.now())
+                .isCancelled(false)
+                .reservedEcoCoins(trip.getPriceEcoCoins())
+                .paymentStatus(TripPaymentStatus.RESERVED)
                 .build();
     }
 
@@ -26,6 +29,8 @@ public class TripParticipantMapper {
                 .passengerId(entity.getPassenger().getId())
                 .joinedAt(entity.getJoinedAt())
                 .isCancelled(entity.getIsCancelled())
+                .reservedEcoCoins(entity.getReservedEcoCoins())
+                .paymentStatus(entity.getPaymentStatus())
                 .build();
     }
 }

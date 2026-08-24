@@ -6,128 +6,126 @@ import com.example.green.api.mapper.TripParticipantMapper;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.TripParticipant;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripStatus;
 import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
-import com.example.green.domain.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.example.green.domain.enums.TripStatus;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class TripParticipantService {
-    private final TripParticipantRepository tripParticipantRepository;
+
+    private final TripParticipantRepository participantRepository;
     private final TripRepository tripRepository;
-    private final UserRepository userRepository;
-    private final TripParticipantMapper tripParticipantMapper;
+    private final TripParticipantMapper participantMapper;
     private final CurrentUserService currentUserService;
+    private final GamificationService gamificationService;
 
     @Transactional(readOnly = true)
-    public List<TripParticipantResponseDto> getActiveParticipants(
-            Long tripId
-    ) {
+    public List<TripParticipantResponseDto> getActiveParticipants(Long tripId) {
         getTripOrThrow(tripId);
 
-        return tripParticipantRepository
+        return participantRepository
                 .findByTripIdAndIsCancelledFalse(tripId)
                 .stream()
-                .map(tripParticipantMapper::toDto)
+                .map(participantMapper::toDto)
                 .toList();
     }
 
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
-        Trip trip = getTripOrThrow(tripId);
+        Trip trip = getTripForUpdateOrThrow(tripId);
         User passenger = currentUserService.getCurrentUserOrThrow();
 
-        if (trip.getTripStatus() != TripStatus.ACTIVE) {
-            throw new IllegalStateException(
-                    "Only active trips can be joined"
-            );
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Only PUBLISHED trips can be joined");
         }
 
-        if (trip.getDriver().getId().equals(
-                passenger.getId()
-        )) {
-            throw new IllegalStateException(
-                    "Driver cannot join own trip as passenger"
-            );
+        if (!trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Trip cannot be joined after departure time");
         }
 
-        TripParticipant existingParticipant =
-                tripParticipantRepository
-                        .findByTripIdAndPassengerId(
-                                tripId,
-                                passenger.getId()
-                        )
+        if (trip.getDriver().getId().equals(passenger.getId())) {
+            throw new IllegalStateException("Driver cannot join own trip");
+        }
+
+        TripParticipant participant = participantRepository
+                        .findByTripIdAndPassengerId(tripId, passenger.getId())
                         .orElse(null);
-
-        if (existingParticipant != null) {
-            if (!Boolean.TRUE.equals(
-                    existingParticipant.getIsCancelled()
-            )) {
-                throw new IllegalStateException(
-                        "Passenger already joined this trip"
-                );
-            }
-
-            trip.occupySeat();
-            existingParticipant.setIsCancelled(false);
-            existingParticipant.setJoinedAt(
-                    java.time.LocalDateTime.now()
-            );
-
-            tripRepository.save(trip);
-
-            return tripParticipantMapper.toDto(
-                    tripParticipantRepository.save(
-                            existingParticipant
-                    )
-            );
-        }
 
         trip.occupySeat();
 
-        TripParticipant participant =
-                tripParticipantMapper.toEntity(
-                        trip,
-                        passenger
-                );
+        if (participant == null) {
+            participant = participantMapper.toEntity(trip, passenger);
+        } else {
+            if (!Boolean.TRUE.equals(participant.getIsCancelled())) {
+                throw new IllegalStateException("Passenger already joined this trip");
+            }
 
-        TripParticipant saved =
-                tripParticipantRepository.save(participant);
+            participant.rejoin(trip.getPriceEcoCoins());
+        }
+
+        /*
+         * Нужен id участника для referenceId финансовой
+         * операции.
+         */
+        participant = participantRepository.saveAndFlush(participant);
+
+        gamificationService.reserveCarpoolFare(
+                passenger.getId(),
+                participant.getId(),
+                participant.getReservedEcoCoins()
+        );
 
         tripRepository.save(trip);
 
-        return tripParticipantMapper.toDto(saved);
+        return participantMapper.toDto(participant);
     }
+
     @Transactional
     public TripParticipantResponseDto leaveTrip(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
         User passenger = currentUserService.getCurrentUserOrThrow();
 
-        TripParticipant participant = tripParticipantRepository
-                .findByTripIdAndPassengerId(tripId, passenger.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Trip can only be left while PUBLISHED");
+        }
 
-        Trip trip = participant.getTrip();
-        trip.validateMutable();
+        TripParticipant participant =
+                participantRepository
+                        .findByTripIdAndPassengerId(tripId, passenger.getId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Participant not found")
+                        );
 
         if (Boolean.TRUE.equals(participant.getIsCancelled())) {
             throw new IllegalStateException("Participation already cancelled");
         }
 
-        participant.setIsCancelled(true);
+        gamificationService.refundCarpoolFare(passenger.getId(), participant.getId(), participant.getReservedEcoCoins());
+        participant.refundAndCancel();
         trip.releaseSeat();
-
         tripRepository.save(trip);
-        return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
+
+        return participantMapper.toDto(participantRepository.save(participant));
+    }
+
+    private Trip getTripForUpdateOrThrow(Long id) {
+        return tripRepository.findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
     }
 
     private Trip getTripOrThrow(Long id) {
         return tripRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
     }
 }

@@ -13,4 +13,5 @@ public interface TripParticipantRepository extends JpaRepository<TripParticipant
     Optional<TripParticipant> findByTripIdAndPassengerId(Long tripId, Long passengerId);
     List<TripParticipant> findByTripIdAndIsCancelledFalse(Long tripId);
     List<TripParticipant> findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(Long passengerId);
+    long countByTripIdAndIsCancelledFalse(Long tripId);
 }

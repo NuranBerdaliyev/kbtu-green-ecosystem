@@ -68,11 +68,14 @@ public class TripController {
         return tripService.search(request);
     }
 
-    @PostMapping("/{tripId}/activate")
-    public TripResponseDto activate(@PathVariable @Positive Long tripId) {
-        return tripService.activateStatus(tripId);
+    @PostMapping("/{tripId}/publish")
+    public TripResponseDto publish(@PathVariable @Positive Long tripId) {
+        return tripService.publishStatus(tripId);
     }
-
+    @PostMapping("/{tripId}/start")
+    public TripResponseDto start(@PathVariable @Positive Long tripId) {
+        return tripService.startStatus(tripId);
+    }
     // POST /api/carpool/trips/{tripId}/complete — complete
     @PostMapping("/{tripId}/complete")
     public TripResponseDto complete(@PathVariable @Positive Long tripId) {

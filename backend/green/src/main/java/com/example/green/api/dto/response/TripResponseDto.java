@@ -15,4 +15,5 @@ public class TripResponseDto {
     private Integer totalSeats;
     private Integer availableSeats;
     private TripStatus tripStatus;
+    private Long priceEcoCoins;
 }

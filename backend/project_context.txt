@@ -872,11 +872,14 @@ public class TripController {
         return tripService.search(request);
     }
 
-    @PostMapping("/{tripId}/activate")
-    public TripResponseDto activate(@PathVariable @Positive Long tripId) {
-        return tripService.activateStatus(tripId);
+    @PostMapping("/{tripId}/publish")
+    public TripResponseDto publish(@PathVariable @Positive Long tripId) {
+        return tripService.publishStatus(tripId);
     }
-
+    @PostMapping("/{tripId}/start")
+    public TripResponseDto start(@PathVariable @Positive Long tripId) {
+        return tripService.startStatus(tripId);
+    }
     // POST /api/carpool/trips/{tripId}/complete — complete
     @PostMapping("/{tripId}/complete")
     public TripResponseDto complete(@PathVariable @Positive Long tripId) {
@@ -1058,6 +1061,7 @@ File: ./green/src/main/java/com/example/green/api/controller/WasteLogController.
 package com.example.green.api.controller;
 
 import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.service.EcoPointsContainerActionService;
 import com.example.green.service.WasteLogService;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -1074,15 +1078,31 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class WasteLogController {
     private final WasteLogService wasteLogService;
+    private final EcoPointsContainerActionService actionService;
 
     @GetMapping
     public List<WasteLogResponseDto> findAll() {
         return wasteLogService.findAll();
     }
 
+    @GetMapping("/pending")
+    public List<WasteLogResponseDto> findPending() {
+        return wasteLogService.findPending();
+    }
+
     @GetMapping("/{id}")
     public WasteLogResponseDto findById(@PathVariable @Positive Long id) {
         return wasteLogService.findById(id);
+    }
+
+    @PostMapping("/{id}/approve")
+    public WasteLogResponseDto approve(@PathVariable @Positive Long id) {
+        return actionService.approveDeposit(id);
+    }
+
+    @PostMapping("/{id}/reject")
+    public WasteLogResponseDto reject(@PathVariable @Positive Long id) {
+        return actionService.rejectDeposit(id);
     }
 }
 
@@ -1317,10 +1337,7 @@ File: ./green/src/main/java/com/example/green/api/dto/request/TripRequestDto.jav
 ========================================
 
 package com.example.green.api.dto.request;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -1340,7 +1357,13 @@ public class TripRequestDto {
 
     @NotNull
     @Min(1)
+    @Max(8)
     private Integer totalSeats;
+
+    @NotNull
+    @Min(1)
+    @Max(100_000)
+    private Long priceEcoCoins;
 }
 
 
@@ -1766,6 +1789,7 @@ File: ./green/src/main/java/com/example/green/api/dto/response/TripParticipantRe
 
 package com.example.green.api.dto.response;
 
+import com.example.green.domain.enums.TripPaymentStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -1777,6 +1801,8 @@ public class TripParticipantResponseDto {
     private Long passengerId;
     private LocalDateTime joinedAt;
     private Boolean isCancelled;
+    private Long reservedEcoCoins;
+    private TripPaymentStatus paymentStatus;
 }
 
 
@@ -1801,6 +1827,7 @@ public class TripResponseDto {
     private Integer totalSeats;
     private Integer availableSeats;
     private TripStatus tripStatus;
+    private Long priceEcoCoins;
 }
 
 
@@ -1850,11 +1877,36 @@ public class VacancyResponseDto {
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/api/dto/response/WasteContainerAlertResponseDto.java
+========================================
+
+package com.example.green.api.dto.response;
+
+import com.example.green.domain.enums.WasteType;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class WasteContainerAlertResponseDto {
+    private Long containerId;
+    private String title;
+    private WasteType wasteType;
+    private Integer previousFullnessPercentage;
+    private Integer currentFullnessPercentage;
+    private Integer currentWeightGrams;
+    private Integer capacityGrams;
+    private LocalDateTime crossedAt;
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/api/dto/response/WasteLogResponseDto.java
 ========================================
 
 package com.example.green.api.dto.response;
 
+import com.example.green.domain.enums.WasteDepositStatus;
+import com.example.green.domain.enums.WasteType;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -1867,6 +1919,11 @@ public class WasteLogResponseDto {
     private LocalDateTime scannedAt;
     private Integer ecoCoinsEarned;
     private Integer wasteWeightGrams;
+    private WasteType wasteType;
+    private Integer fullnessDeltaPercentage;
+    private WasteDepositStatus status;
+    private Long reviewedById;
+    private LocalDateTime reviewedAt;
 }
 
 ========================================
@@ -2373,13 +2430,36 @@ public class GeometryMapper {
     public Point fromWkt(String wkt) {
         try {
             Geometry geometry = new WKTReader().read(wkt);
+
             if (!(geometry instanceof Point point)) {
-                throw new IllegalArgumentException("WKT должен быть POINT");
+                throw new IllegalArgumentException("WKT must contain POINT");
+            }
+
+            double longitude = point.getX();
+            double latitude = point.getY();
+
+            if (!Double.isFinite(longitude)
+                    || !Double.isFinite(latitude)) {
+                throw new IllegalArgumentException("Coordinates must be finite numbers");
+            }
+
+            if (longitude < -180 || longitude > 180) {
+                throw new IllegalArgumentException("Longitude must be between -180 and 180");
+            }
+
+            if (latitude < -90 || latitude > 90) {
+                throw new IllegalArgumentException("Latitude must be between -90 and 90");
             }
             point.setSRID(4326);
             return point;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Неверный WKT: " + wkt, e);
+
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException(
+                    "Invalid WKT: " + wkt,
+                    exception
+            );
         }
     }
 
@@ -2542,6 +2622,7 @@ public class TripMapper {
                 .totalSeats(dto.getTotalSeats())
                 .availableSeats(dto.getTotalSeats())
                 .tripStatus(TripStatus.CREATED)
+                .priceEcoCoins(dto.getPriceEcoCoins())
                 .build();
     }
 
@@ -2550,6 +2631,7 @@ public class TripMapper {
         entity.setDestinationLocation(geometryMapper.fromWkt(dto.getDestinationLocationWkt()));
         entity.setDepartureTime(dto.getDepartureTime());
         entity.setTotalSeats(dto.getTotalSeats());
+        entity.setPriceEcoCoins(dto.getPriceEcoCoins());
     }
 
     public TripResponseDto toDto(Trip entity) {
@@ -2562,6 +2644,7 @@ public class TripMapper {
                 .totalSeats(entity.getTotalSeats())
                 .availableSeats(entity.getAvailableSeats())
                 .tripStatus(entity.getTripStatus())
+                .priceEcoCoins(entity.getPriceEcoCoins())
                 .build();
     }
 }
@@ -2577,6 +2660,7 @@ import com.example.green.api.dto.response.TripParticipantResponseDto;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.TripParticipant;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripPaymentStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -2587,8 +2671,10 @@ public class TripParticipantMapper {
         return TripParticipant.builder()
                 .trip(trip)
                 .passenger(passenger)
-                .joinedAt(LocalDateTime.now()) // только сервер
-                .isCancelled(false)            // только сервер
+                .joinedAt(LocalDateTime.now())
+                .isCancelled(false)
+                .reservedEcoCoins(trip.getPriceEcoCoins())
+                .paymentStatus(TripPaymentStatus.RESERVED)
                 .build();
     }
 
@@ -2599,10 +2685,11 @@ public class TripParticipantMapper {
                 .passengerId(entity.getPassenger().getId())
                 .joinedAt(entity.getJoinedAt())
                 .isCancelled(entity.getIsCancelled())
+                .reservedEcoCoins(entity.getReservedEcoCoins())
+                .paymentStatus(entity.getPaymentStatus())
                 .build();
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/api/mapper/UserMapper.java
@@ -2708,10 +2795,18 @@ public class WasteLogMapper {
                 .scannedAt(entity.getScannedAt())
                 .ecoCoinsEarned(entity.getEcoCoinsEarned())
                 .wasteWeightGrams(entity.getWasteWeightGrams())
+                .wasteType(entity.getWasteType())
+                .fullnessDeltaPercentage(entity.getFullnessDeltaPercentage())
+                .status(entity.getStatus())
+                .reviewedById(
+                        entity.getReviewedBy() == null
+                                ? null
+                                : entity.getReviewedBy().getId()
+                )
+                .reviewedAt(entity.getReviewedAt())
                 .build();
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/config/AuthProperties.java
@@ -2790,10 +2885,6 @@ public class GamificationProperties {
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal coinsPerKm = BigDecimal.valueOf(2);
-
-        @NotNull
-        @DecimalMin(value = "0.0", inclusive = false)
         private BigDecimal co2KgPerPassengerKm =
                 BigDecimal.valueOf(0.12);
 
@@ -2813,22 +2904,28 @@ public class GamificationProperties {
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal plasticCo2KgPerKg =
-                BigDecimal.valueOf(1.5);
+        private BigDecimal plasticCo2KgPerKg = BigDecimal.valueOf(1.5);
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal paperCo2KgPerKg =
-                BigDecimal.valueOf(0.9);
+        private BigDecimal paperCo2KgPerKg = BigDecimal.valueOf(0.9);
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal glassCo2KgPerKg =
-                BigDecimal.valueOf(0.3);
+        private BigDecimal glassCo2KgPerKg = BigDecimal.valueOf(0.3);
 
         @NotNull
         @DecimalMin(value = "0.0", inclusive = false)
-        private BigDecimal batteryCo2KgPerKg =
-                BigDecimal.valueOf(2.0);
+        private BigDecimal batteryCo2KgPerKg = BigDecimal.valueOf(2.0);
+
+        @Min(1)
+        private int maxWeightPerDepositGrams = 5000;
+
+        @Min(1)
+        private int maxDailyApprovedWeightGrams = 20000;
+
+        @Min(1)
+        @Max(100)
+        private int alertThresholdPercentage = 90;
 
         public BigDecimal co2Coefficient(WasteType wasteType) {
             return switch (wasteType) {
@@ -2873,7 +2970,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(
+                                "/auth/**",
+                                "/ws-green",
+                                "/ws-green/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -2894,7 +2995,10 @@ File: ./green/src/main/java/com/example/green/config/WebSocketConfig.java
 
 package com.example.green.config;
 
+import com.example.green.security.WebSocketAuthChannelInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -2902,21 +3006,26 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    private final WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // 配置基于内存的消息代理，暴露两个频道: 一个给普通广播，一个给管理员预警
         config.enableSimpleBroker("/topic");
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 客户端连接 WebSocket 的入口
         registry.addEndpoint("/ws-green")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(webSocketAuthChannelInterceptor);
     }
 }
 
@@ -3382,8 +3491,9 @@ public class Trip {
     @Column(name = "departure_time", nullable = false)
     private LocalDateTime departureTime;
 
-    @NotNull(message = "Departure location cannot be blank")
-    @Min(value = 1, message = "totalSeats должно быть больше 0")
+    @NotNull
+    @Min(value = 1, message = "Total seats must be at least 1")
+    @Max(value = 8, message = "Total seats cannot exceed 8")
     @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
 
@@ -3406,18 +3516,14 @@ public class Trip {
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TripParticipant> tripParticipants = new ArrayList<>();
 
+    @NotNull
+    @Min(1)
+    @Max(100_000)
+    @Column(name = "price_eco_coins", nullable = false)
+    private Long priceEcoCoins;
+
     public boolean isTerminal() {
         return tripStatus == TripStatus.COMPLETED || tripStatus == TripStatus.CANCELLED;
-    }
-
-    public boolean isPublished() {
-        return tripStatus == TripStatus.ACTIVE || isTerminal();
-    }
-
-    public void validateMutable() {
-        if (isTerminal()) {
-            throw new IllegalStateException("Trip is immutable in status: " + tripStatus);
-        }
     }
 
     public void changeStatus(TripStatus next) {
@@ -3426,37 +3532,57 @@ public class Trip {
         }
 
         boolean allowed = switch (tripStatus) {
-            case CREATED -> next == TripStatus.ACTIVE || next == TripStatus.CANCELLED;
-            case ACTIVE -> next == TripStatus.COMPLETED || next == TripStatus.CANCELLED;
+            case CREATED ->
+                    next == TripStatus.PUBLISHED
+                            || next == TripStatus.CANCELLED;
+
+            case PUBLISHED ->
+                    next == TripStatus.IN_PROGRESS
+                            || next == TripStatus.CANCELLED;
+
+            case IN_PROGRESS ->
+                    next == TripStatus.COMPLETED
+                            || next == TripStatus.CANCELLED;
+
             case COMPLETED, CANCELLED -> false;
         };
 
         if (!allowed) {
-            throw new IllegalStateException("Invalid trip status transition: " + tripStatus + " -> " + next);
+            throw new IllegalStateException(
+                    "Invalid trip status transition: "
+                            + tripStatus
+                            + " -> "
+                            + next
+            );
         }
 
-        this.tripStatus = next;
+        tripStatus = next;
     }
 
     public void occupySeat() {
-        validateMutable();
+        if (tripStatus != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Seats can only be occupied in PUBLISHED trips");
+        }
+
         if (availableSeats == null || availableSeats <= 0) {
             throw new IllegalStateException("No available seats");
         }
-        this.availableSeats -= 1;
+
+        availableSeats -= 1;
     }
 
     public void releaseSeat() {
-        validateMutable();
-        if (availableSeats == null || totalSeats == null || availableSeats >= totalSeats) {
-            throw new IllegalStateException("Cannot release seat beyond totalSeats");
+        if (tripStatus != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Seats can only be released in PUBLISHED trips");
         }
-        this.availableSeats += 1;
-    }
-    @AssertTrue(message = "availableSeats cannot be more than totalSeats")
-    public boolean isSeatsValid() {
-        if (availableSeats == null || totalSeats == null) return true;
-        return availableSeats <= totalSeats;
+
+        if (availableSeats == null
+                || totalSeats == null
+                || availableSeats >= totalSeats) {
+            throw new IllegalStateException("Cannot release seat beyond total seats");
+        }
+
+        availableSeats += 1;
     }
 }
 
@@ -3465,41 +3591,106 @@ File: ./green/src/main/java/com/example/green/domain/entity/TripParticipant.java
 ========================================
 
 package com.example.green.domain.entity;
+
+import com.example.green.domain.enums.TripPaymentStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "trip_participants", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_trip_passenger", columnNames = {"trip_id", "passenger_id"})
-})
+@Table(
+        name = "trip_participants",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_trip_passenger",
+                        columnNames = {"trip_id", "passenger_id"}
+                )
+        }
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TripParticipant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Trip cannot be blank")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
-    @NotNull(message = "Passenger cannot be blank")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "passenger_id", nullable = false)
     private User passenger;
 
-    @NotNull(message = "joinedAt cannot be blank")
+    @NotNull
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
-    @NotNull(message = "isCancelled cannot be blank")
+    @NotNull
     @Column(name = "is_cancelled", nullable = false)
     private Boolean isCancelled;
-}
 
+    @NotNull
+    @Min(0)
+    @Column(name = "reserved_eco_coins", nullable = false)
+    private Long reservedEcoCoins;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private TripPaymentStatus paymentStatus;
+
+    public void rejoin(long fare) {
+        if (!Boolean.TRUE.equals(isCancelled)
+                || paymentStatus != TripPaymentStatus.REFUNDED) {
+            throw new IllegalStateException(
+                    "Only refunded participation can be rejoined"
+            );
+        }
+
+        validateFare(fare);
+
+        joinedAt = LocalDateTime.now();
+        isCancelled = false;
+        reservedEcoCoins = fare;
+        paymentStatus = TripPaymentStatus.RESERVED;
+    }
+
+    public void refundAndCancel() {
+        if (Boolean.TRUE.equals(isCancelled)
+                || paymentStatus != TripPaymentStatus.RESERVED) {
+            throw new IllegalStateException(
+                    "Only active reserved payment can be refunded"
+            );
+        }
+
+        isCancelled = true;
+        paymentStatus = TripPaymentStatus.REFUNDED;
+    }
+
+    public void settle() {
+        if (Boolean.TRUE.equals(isCancelled)
+                || paymentStatus != TripPaymentStatus.RESERVED) {
+            throw new IllegalStateException(
+                    "Only active reserved payment can be settled"
+            );
+        }
+
+        paymentStatus = TripPaymentStatus.SETTLED;
+    }
+
+    private void validateFare(long fare) {
+        if (fare <= 0) {
+            throw new IllegalArgumentException(
+                    "Carpool fare must be greater than zero"
+            );
+        }
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/domain/entity/User.java
@@ -3668,8 +3859,12 @@ File: ./green/src/main/java/com/example/green/domain/entity/WasteLog.java
 
 package com.example.green.domain.entity;
 
+import com.example.green.domain.enums.WasteDepositStatus;
+import com.example.green.domain.enums.WasteType;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -3682,22 +3877,22 @@ public class WasteLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "User обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @NotNull(message = "EcoPointContainer обязателен")
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "eco_point_container_id", nullable = false)
     private EcoPointContainer ecoPointContainer;
 
-    @NotNull(message = "scannedAt обязателен")
+    @NotNull
     @Column(name = "scanned_at", nullable = false)
     private LocalDateTime scannedAt;
 
-    @NotNull(message = "ecoCoinsEarned обязателен")
-    @Min(value = 0, message = "ecoCoinsEarned не может быть отрицательным")
+    @NotNull
+    @Min(0)
     @Column(name = "eco_coins_earned", nullable = false)
     private Integer ecoCoinsEarned;
 
@@ -3705,8 +3900,73 @@ public class WasteLog {
     @Min(0)
     @Column(name = "waste_weight_grams", nullable = false)
     private Integer wasteWeightGrams;
-}
 
+    /*
+     * Исторический снимок типа контейнера.
+     * Не следует позднее брать тип из изменяемого контейнера.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "waste_type", nullable = false, length = 20)
+    private WasteType wasteType;
+
+    /*
+     * Для PENDING и REJECTED равен нулю.
+     * Заполняется только при APPROVED.
+     */
+    @NotNull
+    @Min(0)
+    @Max(100)
+    @Column(name = "fullness_delta_percentage", nullable = false)
+    private Integer fullnessDeltaPercentage;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private WasteDepositStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewed_by_id")
+    private User reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    public void approve(User admin, int fullnessDeltaPercentage,
+                        int ecoCoinsEarned, LocalDateTime reviewedAt) {
+        requirePending();
+
+        if (fullnessDeltaPercentage < 0 || fullnessDeltaPercentage > 100) {
+            throw new IllegalArgumentException("Fullness delta must be between 0 and 100");
+        }
+
+        if (ecoCoinsEarned < 0) {
+            throw new IllegalArgumentException("Earned EcoCoins cannot be negative");
+        }
+
+        this.status = WasteDepositStatus.APPROVED;
+        this.fullnessDeltaPercentage = fullnessDeltaPercentage;
+        this.ecoCoinsEarned = ecoCoinsEarned;
+        this.reviewedBy = admin;
+        this.reviewedAt = reviewedAt;
+    }
+
+    public void reject(User admin, LocalDateTime reviewedAt) {
+        requirePending();
+
+        this.status = WasteDepositStatus.REJECTED;
+        this.fullnessDeltaPercentage = 0;
+        this.ecoCoinsEarned = 0;
+        this.reviewedBy = admin;
+        this.reviewedAt = reviewedAt;
+    }
+
+    private void requirePending() {
+        if (status != WasteDepositStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING waste deposit can be reviewed");
+        }
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/domain/enums/AchievementCode.java
@@ -3796,7 +4056,11 @@ package com.example.green.domain.enums;
 public enum EcoTransactionSource {
     TRIP_COMPLETED,
     WASTE_DEPOSIT,
-    ADMIN_ADJUSTMENT
+    ADMIN_ADJUSTMENT,
+    CARPOOL_FARE_RESERVED,
+    CARPOOL_FARE_REFUND,
+    CARPOOL_FARE_EARNING
+
 }
 
 
@@ -3827,6 +4091,18 @@ public enum Role{
 }
 
 ========================================
+File: ./green/src/main/java/com/example/green/domain/enums/TripPaymentStatus.java
+========================================
+
+package com.example.green.domain.enums;
+
+public enum TripPaymentStatus {
+    RESERVED,
+    REFUNDED,
+    SETTLED
+}
+
+========================================
 File: ./green/src/main/java/com/example/green/domain/enums/TripStatus.java
 ========================================
 
@@ -3834,9 +4110,22 @@ package com.example.green.domain.enums;
 
 public enum TripStatus {
     CREATED,
-    ACTIVE,
+    PUBLISHED,
+    IN_PROGRESS,
     COMPLETED,
     CANCELLED
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/domain/enums/WasteDepositStatus.java
+========================================
+
+package com.example.green.domain.enums;
+
+public enum WasteDepositStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
 }
 
 ========================================
@@ -3959,6 +4248,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -3967,7 +4257,11 @@ public interface EcoTransactionRepository extends JpaRepository<EcoTransaction, 
     Optional<EcoTransaction> findByUserIdAndSourceAndReferenceId(Long userId, EcoTransactionSource source, Long referenceId);
     long countByUserId(Long userId);
     long countByUserIdAndSource(Long userId, EcoTransactionSource source);
+    long countByUserIdAndSourceIn(Long userId, Collection<EcoTransactionSource> sources);
+
 }
+
+
 
 ========================================
 File: ./green/src/main/java/com/example/green/domain/repository/JobApplicationRepository.java
@@ -4024,6 +4318,7 @@ public interface TripParticipantRepository extends JpaRepository<TripParticipant
     Optional<TripParticipant> findByTripIdAndPassengerId(Long tripId, Long passengerId);
     List<TripParticipant> findByTripIdAndIsCancelledFalse(Long tripId);
     List<TripParticipant> findByPassengerIdAndIsCancelledFalseOrderByJoinedAtDesc(Long passengerId);
+    long countByTripIdAndIsCancelledFalse(Long tripId);
 }
 
 
@@ -4035,14 +4330,29 @@ package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.enums.TripStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
 public interface TripRepository extends JpaRepository<Trip, Long> {
     List<Trip> findByTripStatusAndDepartureTimeAfter(TripStatus status, LocalDateTime time);
     List<Trip> findByDriverIdOrderByDepartureTimeDesc(
             Long driverId
+    );
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select t
+        from Trip t
+        where t.id = :id
+        """)
+    Optional<Trip> findByIdForUpdate(
+            @Param("id") Long id
     );
 }
 
@@ -4093,7 +4403,7 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Page<User> findByRoleIn(Collection<Role> roles, Pageable pageable);
     long countByRole(Role role);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("""
             select count(u) + 1
             from User u
@@ -4102,16 +4412,10 @@ public interface UserRepository extends JpaRepository<User, Long>{
                    u.esgRating > :esg
                    or (
                        u.esgRating = :esg
-                       and u.ecoCoinsBalance > :coins
-                   )
-                   or (
-                       u.esgRating = :esg
-                       and u.ecoCoinsBalance = :coins
                        and u.totalCo2Saved > :co2
                    )
                    or (
                        u.esgRating = :esg
-                       and u.ecoCoinsBalance = :coins
                        and u.totalCo2Saved = :co2
                        and u.id < :userId
                    )
@@ -4121,7 +4425,6 @@ public interface UserRepository extends JpaRepository<User, Long>{
             @Param("roles") Collection<Role> roles,
             @Param("userId") Long userId,
             @Param("esg") Integer esg,
-            @Param("coins") Long coins,
             @Param("co2") BigDecimal co2
     );
 }
@@ -4154,14 +4457,45 @@ File: ./green/src/main/java/com/example/green/domain/repository/WasteLogReposito
 package com.example.green.domain.repository;
 
 import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.enums.WasteDepositStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface WasteLogRepository extends JpaRepository<WasteLog, Long> {
     List<WasteLog> findByUserId(Long userId);
     List<WasteLog> findByEcoPointContainerId(Long ecoPointContainerId);
     boolean existsByEcoPointContainerId(Long ecoPointContainerId);
+    List<WasteLog> findByStatusOrderByScannedAtAsc(WasteDepositStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select log
+        from WasteLog log
+        where log.id = :id
+        """)
+    Optional<WasteLog> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("""
+        select coalesce(sum(log.wasteWeightGrams), 0)
+        from WasteLog log
+        where log.user.id = :userId
+          and log.status = :status
+          and log.reviewedAt >= :from
+          and log.reviewedAt < :to
+        """)
+    Long sumWeightByUserAndStatusBetween(
+            @Param("userId") Long userId,
+            @Param("status") WasteDepositStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
 }
 
 ========================================
@@ -4261,6 +4595,183 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 }
 
+
+========================================
+File: ./green/src/main/java/com/example/green/security/WebSocketAuthChannelInterceptor.java
+========================================
+
+package com.example.green.security;
+
+import com.example.green.domain.entity.User;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.service.JwtService;
+import io.jsonwebtoken.Claims;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.stereotype.Component;
+
+import java.security.Principal;
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class WebSocketAuthChannelInterceptor
+        implements ChannelInterceptor {
+
+    private static final String ECO_CONTAINERS_TOPIC =
+            "/topic/eco-containers";
+
+    private static final String ADMIN_ALERTS_TOPIC =
+            "/topic/admin/alerts";
+
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+
+    @Override
+    public Message<?> preSend(
+            Message<?> message,
+            MessageChannel channel
+    ) {
+        StompHeaderAccessor accessor =
+                MessageHeaderAccessor.getAccessor(
+                        message,
+                        StompHeaderAccessor.class
+                );
+
+        if (accessor == null || accessor.getCommand() == null) {
+            return message;
+        }
+
+        StompCommand command = accessor.getCommand();
+
+        if (command == StompCommand.CONNECT) {
+            authenticate(accessor);
+        }
+
+        if (command == StompCommand.SUBSCRIBE) {
+            authorizeSubscription(accessor);
+        }
+
+        /*
+         * Клиенты этого проекта только подписываются на события.
+         * Отправлять сообщения в broker им не разрешается.
+         */
+        if (command == StompCommand.SEND) {
+            throw new AccessDeniedException(
+                    "Client WebSocket messages are not allowed"
+            );
+        }
+
+        return message;
+    }
+
+    private void authenticate(StompHeaderAccessor accessor) {
+        String authorizationHeader =
+                accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
+
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
+            throw new BadCredentialsException("WebSocket access token is missing");
+        }
+
+        String token = authorizationHeader.substring(7);
+
+        try {
+            Claims claims = jwtService.parse(token);
+
+            Long userId = Long.parseLong(
+                    claims.getSubject()
+            );
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() ->
+                            new BadCredentialsException("WebSocket user not found")
+                    );
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            user.getId(),
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+                            )
+                    );
+
+            /*
+             * Spring сохранит пользователя STOMP-сессии.
+             * Он будет доступен в последующих SUBSCRIBE-сообщениях.
+             */
+            accessor.setUser(authentication);
+
+        } catch (BadCredentialsException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new BadCredentialsException("Invalid or expired WebSocket access token", exception);
+        }
+    }
+
+    private void authorizeSubscription(StompHeaderAccessor accessor) {
+        Authentication authentication = requireAuthentication(accessor.getUser());
+        String destination = accessor.getDestination();
+
+        if (destination == null) {
+            throw new AccessDeniedException("WebSocket destination is missing");
+        }
+
+        /*
+         * Заполненность контейнеров может видеть любой
+         * авторизованный пользователь.
+         */
+        if (ECO_CONTAINERS_TOPIC.equals(destination)) {
+            return;
+        }
+
+        /*
+         * Административные уведомления доступны только ADMIN.
+         */
+        if (ADMIN_ALERTS_TOPIC.equals(destination)) {
+            boolean isAdmin = authentication
+                    .getAuthorities()
+                    .stream()
+                    .anyMatch(authority ->
+                            "ROLE_ADMIN".equals(
+                                    authority.getAuthority()
+                            )
+                    );
+
+            if (!isAdmin) {
+                throw new AccessDeniedException("Only administrators can subscribe to admin alerts");
+            }
+
+            return;
+        }
+
+        /*
+         * Запрещаем неизвестные подписки по умолчанию.
+         * Это предотвращает случайное открытие нового topic.
+         */
+        throw new AccessDeniedException("Subscription is not allowed: " + destination);
+    }
+
+    private Authentication requireAuthentication(Principal principal) {
+        if (!(principal instanceof Authentication authentication) || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("WebSocket authentication is required");
+        }
+
+        return authentication;
+    }
+}
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/AdminService.java
@@ -4649,11 +5160,14 @@ import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.domain.entity.EcoPointContainer;
 import com.example.green.domain.repository.EcoPointContainerRepository;
 import com.example.green.domain.repository.WasteLogRepository;
+import com.example.green.service.event.EcoPointContainerChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -4663,6 +5177,7 @@ public class EcoPointContainerService {
     private final WasteLogRepository wasteLogRepository;
     private final EcoPointContainerMapper ecoPointContainerMapper;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> findAll() {
@@ -4713,11 +5228,17 @@ public class EcoPointContainerService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException("EcoPointContainer not found: id=" + id)
                         );
-
+        int previousFullness = container.getFullnessPercentage();
         container.empty();
         EcoPointContainer saved = ecoPointContainerRepository.save(container);
         EcoPointContainerResponseDto response = ecoPointContainerMapper.toDto(saved);
-        messagingTemplate.convertAndSend("/topic/eco-containers", response);
+        eventPublisher.publishEvent(
+                new EcoPointContainerChangedEvent(
+                        response,
+                        previousFullness,
+                        LocalDateTime.now()
+                )
+        );
         return response;
     }
 
@@ -4735,31 +5256,42 @@ package com.example.green.service;
 import com.example.green.api.dto.request.WasteDepositRequestDto;
 import com.example.green.api.dto.response.EcoPointContainerResponseDto;
 import com.example.green.api.dto.response.WasteLogResponseDto;
+import com.example.green.api.error.ForbiddenException;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.EcoPointContainerMapper;
 import com.example.green.api.mapper.WasteLogMapper;
-import com.example.green.domain.entity.*;
+import com.example.green.config.GamificationProperties;
+import com.example.green.domain.entity.EcoPointContainer;
+import com.example.green.domain.entity.User;
+import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.enums.Role;
+import com.example.green.domain.enums.WasteDepositStatus;
 import com.example.green.domain.model.RewardResult;
-import com.example.green.domain.repository.*;
+import com.example.green.domain.repository.EcoPointContainerRepository;
+import com.example.green.domain.repository.UserRepository;
+import com.example.green.domain.repository.WasteLogRepository;
+import com.example.green.service.event.EcoPointContainerChangedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class EcoPointsContainerActionService {
-
     private final EcoPointContainerRepository containerRepository;
     private final WasteLogRepository wasteLogRepository;
+    private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
     private final GamificationService gamificationService;
-    private final SimpMessagingTemplate messagingTemplate;
     private final EcoPointContainerMapper containerMapper;
     private final WasteLogMapper wasteLogMapper;
+    private final GamificationProperties properties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<EcoPointContainerResponseDto> getActiveContainers() {
@@ -4770,56 +5302,309 @@ public class EcoPointsContainerActionService {
                 .toList();
     }
 
+    /*
+     * Пользователь только создаёт заявку.
+     * Контейнер и Gamification здесь не изменяются.
+     */
     @Transactional
-    public WasteLogResponseDto processDeposit(
-            WasteDepositRequestDto request
-    ) {
+    public WasteLogResponseDto processDeposit(WasteDepositRequestDto request) {
         User user = currentUserService.getCurrentUserOrThrow();
 
-        EcoPointContainer container = containerRepository
-                .findByQrCodeTokenForUpdate(
-                        request.getQrCodeToken()
-                )
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Invalid QR code or container not found")
-                );
+        validateWeight(request.getWasteWeightGrams());
 
-        if (!Boolean.TRUE.equals(container.getIsActive())) {
-            throw new IllegalStateException(
-                    "Container is not active"
-            );
-        }
-        container.acceptWaste(request.getWasteWeightGrams());
-        containerRepository.save(container);
+        EcoPointContainer container = containerRepository
+                    .findByQrCodeTokenForUpdate(request.getQrCodeToken())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Invalid QR code or container not found")
+                        );
+
+        requireActiveContainer(container);
+        validateClaimFitsCurrentCapacity(container, request.getWasteWeightGrams());
 
         WasteLog log = WasteLog.builder()
                 .user(user)
                 .ecoPointContainer(container)
                 .scannedAt(LocalDateTime.now())
                 .ecoCoinsEarned(0)
-                .wasteWeightGrams(
-                        request.getWasteWeightGrams()
-                )
+                .wasteWeightGrams(request.getWasteWeightGrams())
+                .wasteType(container.getWasteType())
+                .fullnessDeltaPercentage(0)
+                .status(WasteDepositStatus.PENDING)
+                .reviewedBy(null)
+                .reviewedAt(null)
                 .build();
 
-        log = wasteLogRepository.save(log);
+        return wasteLogMapper.toDto(wasteLogRepository.save(log));
+    }
 
-        RewardResult reward = gamificationService.rewardForWasteDeposit(
-                        user.getId(),
-                        log.getId(),
-                        request.getWasteWeightGrams(),
-                        container.getWasteType()
+    /*
+     * Только здесь физически меняется виртуальный контейнер
+     * и начисляется награда.
+     */
+    @Transactional
+    public WasteLogResponseDto approveDeposit(Long wasteLogId) {
+        User admin = requireAdmin();
+        WasteLog log = wasteLogRepository
+                .findByIdForUpdate(wasteLogId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("WasteLog not found: id=" + wasteLogId)
                 );
 
-        log.setEcoCoinsEarned(Math.toIntExact(reward.ecoCoinsEarned()));
+        if (log.getStatus() != WasteDepositStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING waste deposit can be approved");
+        }
+        validateWeight(log.getWasteWeightGrams());
+
+        /*
+         * Блокируем пользователя: два ADMIN не смогут
+         * параллельно обойти его дневной лимит через разные
+         * заявки.
+         */
+        User depositor = userRepository
+                .findByIdForUpdate(log.getUser().getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Deposit user not found")
+                );
+
+        validateDailyApprovedLimit(depositor.getId(), log.getWasteWeightGrams());
+
+        EcoPointContainer container =
+                containerRepository
+                        .findByIdForUpdate(log.getEcoPointContainer().getId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("EcoPointContainer not found")
+                        );
+
+        requireActiveContainer(container);
+
+        /*
+         * Если ADMIN успел очистить контейнер и изменить его
+         * тип, старая заявка не должна применяться к новому
+         * типу отходов.
+         */
+        if (container.getWasteType() != log.getWasteType()) {
+            throw new IllegalStateException("Container waste type changed after deposit request");
+        }
+
+        int previousFullness = container.getFullnessPercentage();
+
+        /*
+         * Здесь повторно проверяется вместимость.
+         * Между созданием заявки и approval контейнер мог
+         * заполниться другими подтверждёнными депозитами.
+         */
+        container.acceptWaste(log.getWasteWeightGrams());
+
+        int currentFullness = container.getFullnessPercentage();
+
+        int fullnessDelta = currentFullness - previousFullness;
+
+        containerRepository.save(container);
+
+        RewardResult reward = gamificationService.rewardForWasteDeposit(
+                        depositor.getId(),
+                        log.getId(),
+                        log.getWasteWeightGrams(),
+                        log.getWasteType()
+                );
+
+        LocalDateTime reviewedAt = LocalDateTime.now();
+
+        log.approve(
+                admin,
+                fullnessDelta,
+                Math.toIntExact(reward.ecoCoinsEarned()),
+                reviewedAt
+        );
 
         WasteLog savedLog = wasteLogRepository.save(log);
         EcoPointContainerResponseDto containerDto = containerMapper.toDto(container);
-        messagingTemplate.convertAndSend("/topic/eco-containers", containerDto);
+
+        /*
+         * Listener отправит WebSocket только после commit.
+         */
+        eventPublisher.publishEvent(
+                new EcoPointContainerChangedEvent(
+                        containerDto,
+                        previousFullness,
+                        reviewedAt
+                )
+        );
 
         return wasteLogMapper.toDto(savedLog);
     }
+
+    @Transactional
+    public WasteLogResponseDto rejectDeposit(Long wasteLogId) {
+        User admin = requireAdmin();
+
+        WasteLog log = wasteLogRepository.findByIdForUpdate(wasteLogId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("WasteLog not found: id=" + wasteLogId)
+                );
+
+        if (log.getStatus() != WasteDepositStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING waste deposit can be rejected");
+        }
+
+        log.reject(admin, LocalDateTime.now());
+
+        return wasteLogMapper.toDto(wasteLogRepository.save(log));
+    }
+
+    private void validateWeight(int weightGrams) {
+        if (weightGrams <= 0) {
+            throw new IllegalArgumentException("Waste weight must be greater than zero");
+        }
+
+        int maximum = properties
+                .getWaste()
+                .getMaxWeightPerDepositGrams();
+
+        if (weightGrams > maximum) {
+            throw new IllegalStateException("Waste deposit exceeds maximum weight of "
+                            + maximum
+                            + " grams"
+            );
+        }
+    }
+
+    private void validateDailyApprovedLimit(Long userId, int requestedWeightGrams) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime from = today.atStartOfDay();
+        LocalDateTime to = today.plusDays(1).atStartOfDay();
+
+        Long approvedWeight =
+                wasteLogRepository.sumWeightByUserAndStatusBetween(
+                                userId,
+                                WasteDepositStatus.APPROVED,
+                                from,
+                                to
+                        );
+
+        long currentWeight = approvedWeight == null
+                        ? 0L
+                        : approvedWeight;
+
+        long newDailyWeight = Math.addExact(currentWeight, requestedWeightGrams);
+
+        int maximum = properties
+                .getWaste()
+                .getMaxDailyApprovedWeightGrams();
+
+        if (newDailyWeight > maximum) {
+            throw new IllegalStateException("Daily approved waste limit exceeded");
+        }
+    }
+
+    private void validateClaimFitsCurrentCapacity(EcoPointContainer container, int weightGrams) {
+        int currentWeight = container.getCurrentWeightGrams() == null
+                        ? 0
+                        : container.getCurrentWeightGrams();
+
+        if (currentWeight >= container.getCapacityGrams()) {
+            throw new IllegalStateException("Container is full");
+        }
+
+        long claimedWeight = (long) currentWeight + weightGrams;
+
+        if (claimedWeight > container.getCapacityGrams()) {
+            throw new IllegalStateException("Waste weight exceeds remaining container capacity");
+        }
+    }
+
+    private void requireActiveContainer(EcoPointContainer container) {
+        if (!Boolean.TRUE.equals(container.getIsActive())) {
+            throw new IllegalStateException("Container is not active");
+        }
+    }
+
+    private User requireAdmin() {
+        User user = currentUserService.getCurrentUserOrThrow();
+
+        if (user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("Only administrators can review waste deposits");
+        }
+        return user;
+    }
 }
+
+========================================
+File: ./green/src/main/java/com/example/green/service/EcoWasteWebSocketPublisher.java
+========================================
+
+package com.example.green.service;
+
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+import com.example.green.api.dto.response.WasteContainerAlertResponseDto;
+import com.example.green.config.GamificationProperties;
+import com.example.green.service.event.EcoPointContainerChangedEvent;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+@Component
+@RequiredArgsConstructor
+public class EcoWasteWebSocketPublisher {
+
+    private static final String CONTAINERS_TOPIC = "/topic/eco-containers";
+    private static final String ADMIN_ALERTS_TOPIC = "/topic/admin/alerts";
+
+    private final SimpMessagingTemplate messagingTemplate;
+    private final GamificationProperties properties;
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleContainerChanged(EcoPointContainerChangedEvent event) {
+        EcoPointContainerResponseDto container = event.container();
+
+        messagingTemplate.convertAndSend(CONTAINERS_TOPIC, container);
+
+        int threshold = properties
+                .getWaste()
+                .getAlertThresholdPercentage();
+
+        int previous = event.previousFullnessPercentage();
+        int current = container.getFullnessPercentage();
+
+        boolean crossedThreshold = previous < threshold && current >= threshold;
+
+        if (!crossedThreshold) {
+            return;
+        }
+
+        WasteContainerAlertResponseDto alert =
+                WasteContainerAlertResponseDto.builder()
+                        .containerId(container.getId())
+                        .title(container.getTitle())
+                        .wasteType(container.getWasteType())
+                        .previousFullnessPercentage(previous)
+                        .currentFullnessPercentage(current)
+                        .currentWeightGrams(container.getCurrentWeightGrams())
+                        .capacityGrams(container.getCapacityGrams())
+                        .crossedAt(event.occurredAt())
+                        .build();
+
+        messagingTemplate.convertAndSend(ADMIN_ALERTS_TOPIC, alert);
+    }
+}
+
+========================================
+File: ./green/src/main/java/com/example/green/service/event/EcoPointContainerChangedEvent.java
+========================================
+
+package com.example.green.service.event;
+
+import com.example.green.api.dto.response.EcoPointContainerResponseDto;
+
+import java.time.LocalDateTime;
+
+public record EcoPointContainerChangedEvent(
+        EcoPointContainerResponseDto container,
+        Integer previousFullnessPercentage,
+        LocalDateTime occurredAt
+) {}
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/GamificationService.java
@@ -4860,29 +5645,24 @@ public class GamificationService {
     private final GamificationProperties properties;
 
     @Transactional
-    public RewardResult rewardForCompletedTrip(Long userId, Long tripId, double distanceKm) {
+    public RewardResult recordCompletedTripActivity(Long userId, Long tripId, double distanceKm) {
         if (distanceKm <= 0) {
             throw new IllegalArgumentException("Trip distance must be greater than zero");
         }
-
         BigDecimal distance = BigDecimal.valueOf(distanceKm);
-        long coins = distance
-                .multiply(properties.getTrip().getCoinsPerKm())
-                .setScale(0, RoundingMode.HALF_UP)
-                .max(BigDecimal.ONE)
-                .longValueExact();
+        BigDecimal co2Saved = distance
+                .multiply(properties.getTrip().getCo2KgPerPassengerKm())
+                .setScale(3, RoundingMode.HALF_UP);
 
-        BigDecimal co2Saved = distance.multiply(properties.getTrip().getCo2KgPerPassengerKm()).setScale(3, RoundingMode.HALF_UP);
         return applyReward(
                 userId,
                 EcoTransactionSource.TRIP_COMPLETED,
                 tripId,
-                coins,
+                0L,
                 properties.getTrip().getEsgPerCompletedTrip(),
                 co2Saved
         );
     }
-
     @Transactional
     public RewardResult rewardForWasteDeposit(Long userId, Long wasteLogId, int wasteWeightGrams, WasteType wasteType) {
         if (wasteWeightGrams <= 0) {
@@ -4948,7 +5728,7 @@ public class GamificationService {
     public Page<LeaderboardEntryResponseDto> getLeaderboard(int page, int size) {
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(
-                        Sort.Order.desc("esgRating"), Sort.Order.desc("ecoCoinsBalance"),
+                        Sort.Order.desc("esgRating"),
                         Sort.Order.desc("totalCo2Saved"), Sort.Order.asc("id")
                 )
         );
@@ -4965,6 +5745,55 @@ public class GamificationService {
                         .toList();
 
         return new PageImpl<>(content, pageable, users.getTotalElements());
+    }
+
+
+    @Transactional
+    public void reserveCarpoolFare(
+            Long passengerId,
+            Long participantId,
+            long amount
+    ) {
+        validateFareReference(participantId, amount);
+
+        applyBalanceOperation(
+                passengerId,
+                EcoTransactionSource.CARPOOL_FARE_RESERVED,
+                participantId,
+                Math.negateExact(amount)
+        );
+    }
+
+    @Transactional
+    public void refundCarpoolFare(
+            Long passengerId,
+            Long participantId,
+            long amount
+    ) {
+        validateFareReference(participantId, amount);
+
+        applyBalanceOperation(
+                passengerId,
+                EcoTransactionSource.CARPOOL_FARE_REFUND,
+                participantId,
+                amount
+        );
+    }
+
+    @Transactional
+    public void creditCarpoolEarning(
+            Long driverId,
+            Long tripId,
+            long amount
+    ) {
+        validateFareReference(tripId, amount);
+
+        applyBalanceOperation(
+                driverId,
+                EcoTransactionSource.CARPOOL_FARE_EARNING,
+                tripId,
+                amount
+        );
     }
 
     private RewardResult applyReward(
@@ -5049,7 +5878,7 @@ public class GamificationService {
     }
 
     private List<AchievementCode> evaluateAchievements(User user) {
-        long totalActions = ecoTransactionRepository.countByUserId(user.getId());
+        long totalActions = ecoTransactionRepository.countByUserIdAndSourceIn(user.getId(), List.of(EcoTransactionSource.TRIP_COMPLETED, EcoTransactionSource.WASTE_DEPOSIT));
 
         long completedTrips = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.TRIP_COMPLETED);
         long wasteDeposits = ecoTransactionRepository.countByUserIdAndSource(user.getId(), EcoTransactionSource.WASTE_DEPOSIT);
@@ -5161,7 +5990,6 @@ public class GamificationService {
                 RANKED_ROLES,
                 user.getId(),
                 user.getEsgRating(),
-                user.getEcoCoinsBalance(),
                 user.getTotalCo2Saved()
         );
     }
@@ -5174,6 +6002,67 @@ public class GamificationService {
         return value == null
                 ? BigDecimal.ZERO
                 : value;
+    }
+
+    private void applyBalanceOperation(
+            Long userId,
+            EcoTransactionSource source,
+            Long referenceId,
+            long ecoCoinsDelta
+    ) {
+        User user = userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found: id=" + userId
+                        )
+                );
+
+        long newBalance = Math.addExact(
+                user.getEcoCoinsBalance(),
+                ecoCoinsDelta
+        );
+
+        if (newBalance < 0) {
+            throw new IllegalStateException(
+                    "Insufficient EcoCoins balance"
+            );
+        }
+
+        user.setEcoCoinsBalance(newBalance);
+        userRepository.save(user);
+
+        EcoTransaction transaction =
+                EcoTransaction.builder()
+                        .user(user)
+                        .source(source)
+                        .referenceId(referenceId)
+                        .ecoCoinsDelta(ecoCoinsDelta)
+                        .esgRatingDelta(0)
+                        .co2SavedDelta(
+                                BigDecimal.ZERO.setScale(3)
+                        )
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+        ecoTransactionRepository.saveAndFlush(transaction);
+    }
+
+    private void validateFareReference(
+            Long referenceId,
+            long amount
+    ) {
+        if (referenceId == null || referenceId <= 0) {
+            throw new IllegalArgumentException(
+                    "Payment referenceId must be positive"
+            );
+        }
+
+        if (amount <= 0) {
+            throw new IllegalArgumentException(
+                    "Carpool fare must be greater than zero"
+            );
+        }
     }
 }
 
@@ -5517,132 +6406,129 @@ import com.example.green.api.mapper.TripParticipantMapper;
 import com.example.green.domain.entity.Trip;
 import com.example.green.domain.entity.TripParticipant;
 import com.example.green.domain.entity.User;
+import com.example.green.domain.enums.TripStatus;
 import com.example.green.domain.repository.TripParticipantRepository;
 import com.example.green.domain.repository.TripRepository;
-import com.example.green.domain.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.example.green.domain.enums.TripStatus;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class TripParticipantService {
-    private final TripParticipantRepository tripParticipantRepository;
+
+    private final TripParticipantRepository participantRepository;
     private final TripRepository tripRepository;
-    private final UserRepository userRepository;
-    private final TripParticipantMapper tripParticipantMapper;
+    private final TripParticipantMapper participantMapper;
     private final CurrentUserService currentUserService;
+    private final GamificationService gamificationService;
 
     @Transactional(readOnly = true)
-    public List<TripParticipantResponseDto> getActiveParticipants(
-            Long tripId
-    ) {
+    public List<TripParticipantResponseDto> getActiveParticipants(Long tripId) {
         getTripOrThrow(tripId);
 
-        return tripParticipantRepository
+        return participantRepository
                 .findByTripIdAndIsCancelledFalse(tripId)
                 .stream()
-                .map(tripParticipantMapper::toDto)
+                .map(participantMapper::toDto)
                 .toList();
     }
 
     @Transactional
     public TripParticipantResponseDto joinTrip(Long tripId) {
-        Trip trip = getTripOrThrow(tripId);
+        Trip trip = getTripForUpdateOrThrow(tripId);
         User passenger = currentUserService.getCurrentUserOrThrow();
 
-        if (trip.getTripStatus() != TripStatus.ACTIVE) {
-            throw new IllegalStateException(
-                    "Only active trips can be joined"
-            );
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Only PUBLISHED trips can be joined");
         }
 
-        if (trip.getDriver().getId().equals(
-                passenger.getId()
-        )) {
-            throw new IllegalStateException(
-                    "Driver cannot join own trip as passenger"
-            );
+        if (!trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Trip cannot be joined after departure time");
         }
 
-        TripParticipant existingParticipant =
-                tripParticipantRepository
-                        .findByTripIdAndPassengerId(
-                                tripId,
-                                passenger.getId()
-                        )
+        if (trip.getDriver().getId().equals(passenger.getId())) {
+            throw new IllegalStateException("Driver cannot join own trip");
+        }
+
+        TripParticipant participant = participantRepository
+                        .findByTripIdAndPassengerId(tripId, passenger.getId())
                         .orElse(null);
-
-        if (existingParticipant != null) {
-            if (!Boolean.TRUE.equals(
-                    existingParticipant.getIsCancelled()
-            )) {
-                throw new IllegalStateException(
-                        "Passenger already joined this trip"
-                );
-            }
-
-            trip.occupySeat();
-            existingParticipant.setIsCancelled(false);
-            existingParticipant.setJoinedAt(
-                    java.time.LocalDateTime.now()
-            );
-
-            tripRepository.save(trip);
-
-            return tripParticipantMapper.toDto(
-                    tripParticipantRepository.save(
-                            existingParticipant
-                    )
-            );
-        }
 
         trip.occupySeat();
 
-        TripParticipant participant =
-                tripParticipantMapper.toEntity(
-                        trip,
-                        passenger
-                );
+        if (participant == null) {
+            participant = participantMapper.toEntity(trip, passenger);
+        } else {
+            if (!Boolean.TRUE.equals(participant.getIsCancelled())) {
+                throw new IllegalStateException("Passenger already joined this trip");
+            }
 
-        TripParticipant saved =
-                tripParticipantRepository.save(participant);
+            participant.rejoin(trip.getPriceEcoCoins());
+        }
+
+        /*
+         * Нужен id участника для referenceId финансовой
+         * операции.
+         */
+        participant = participantRepository.saveAndFlush(participant);
+
+        gamificationService.reserveCarpoolFare(
+                passenger.getId(),
+                participant.getId(),
+                participant.getReservedEcoCoins()
+        );
 
         tripRepository.save(trip);
 
-        return tripParticipantMapper.toDto(saved);
+        return participantMapper.toDto(participant);
     }
+
     @Transactional
     public TripParticipantResponseDto leaveTrip(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
         User passenger = currentUserService.getCurrentUserOrThrow();
 
-        TripParticipant participant = tripParticipantRepository
-                .findByTripIdAndPassengerId(tripId, passenger.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Trip can only be left while PUBLISHED");
+        }
 
-        Trip trip = participant.getTrip();
-        trip.validateMutable();
+        TripParticipant participant =
+                participantRepository
+                        .findByTripIdAndPassengerId(tripId, passenger.getId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Participant not found")
+                        );
 
         if (Boolean.TRUE.equals(participant.getIsCancelled())) {
             throw new IllegalStateException("Participation already cancelled");
         }
 
-        participant.setIsCancelled(true);
+        gamificationService.refundCarpoolFare(passenger.getId(), participant.getId(), participant.getReservedEcoCoins());
+        participant.refundAndCancel();
         trip.releaseSeat();
-
         tripRepository.save(trip);
-        return tripParticipantMapper.toDto(tripParticipantRepository.save(participant));
+
+        return participantMapper.toDto(participantRepository.save(participant));
+    }
+
+    private Trip getTripForUpdateOrThrow(Long id) {
+        return tripRepository.findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
     }
 
     private Trip getTripOrThrow(Long id) {
         return tripRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
     }
 }
-
 
 ========================================
 File: ./green/src/main/java/com/example/green/service/TripService.java
@@ -5673,6 +6559,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.example.green.domain.entity.TripParticipant;
+import com.example.green.domain.enums.TripPaymentStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -5701,7 +6589,8 @@ public class TripService {
         Point originPoint = buildOriginPoint(request);
 
         List<TripResponseDto> filtered = tripRepository.findAll(sort).stream()
-                .filter(t -> t.getTripStatus() == TripStatus.ACTIVE)
+                .filter(t -> t.getTripStatus() == TripStatus.PUBLISHED)
+                .filter(t -> t.getDepartureTime().isAfter(LocalDateTime.now()))
                 .filter(t -> request.getFromTime() == null || !t.getDepartureTime().isBefore(request.getFromTime()))
                 .filter(t -> request.getToTime() == null || !t.getDepartureTime().isAfter(request.getToTime()))
                 .filter(t -> request.getMinSeats() == null || t.getAvailableSeats() >= request.getMinSeats())
@@ -5763,7 +6652,6 @@ public class TripService {
     public TripResponseDto updateTrip(Long id, TripRequestDto request) {
         Trip entity = getTripOrThrow(id);
         requireDriver(entity);
-        entity.validateMutable();
         int occupiedSeats = entity.getTotalSeats() - entity.getAvailableSeats();
 
         if (request.getTotalSeats() < occupiedSeats) {
@@ -5795,62 +6683,152 @@ public class TripService {
         tripRepository.delete(trip);
     }
     @Transactional
-    public TripResponseDto activateStatus(Long id) {
-        Trip trip = getTripOrThrow(id);
+    public TripResponseDto publishStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
+
         requireDriver(trip);
-        trip.changeStatus(TripStatus.ACTIVE);
+
+        if (!trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Expired trip cannot be published");
+        }
+
+        trip.changeStatus(TripStatus.PUBLISHED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
     @Transactional
-    public TripResponseDto cancelStatus (Long id) {
-        Trip trip = getTripOrThrow(id);
+    public TripResponseDto startStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
         requireDriver(trip);
+
+        if (trip.getTripStatus() != TripStatus.PUBLISHED) {
+            throw new IllegalStateException("Only PUBLISHED trip can be started");
+        }
+
+        if (trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Trip cannot be started before departure time");
+        }
+
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        if (participants.isEmpty()) {
+            throw new IllegalStateException("Trip cannot be started without passengers");
+        }
+
+        boolean invalidPayment =
+                participants.stream().anyMatch(participant ->
+                        participant.getPaymentStatus() != TripPaymentStatus.RESERVED || participant.getReservedEcoCoins() <= 0);
+
+        if (invalidPayment) {
+            throw new IllegalStateException("Every active passenger must have a reserved fare");
+        }
+
+        trip.changeStatus(TripStatus.IN_PROGRESS);
+        return tripMapper.toDto(tripRepository.save(trip));
+    }
+    @Transactional
+    public TripResponseDto cancelStatus(Long tripId) {
+        Trip trip = getTripForUpdateOrThrow(tripId);
+        requireDriver(trip);
+
+        if (trip.isTerminal()) {
+            throw new IllegalStateException("Terminal trip cannot be cancelled");
+        }
+
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        for (TripParticipant participant : participants) {
+            if (participant.getPaymentStatus() != TripPaymentStatus.RESERVED) {
+                throw new IllegalStateException("Active passenger has invalid payment status");
+            }
+
+            gamificationService.refundCarpoolFare(
+                    participant.getPassenger().getId(),
+                    participant.getId(),
+                    participant.getReservedEcoCoins()
+            );
+
+            participant.refundAndCancel();
+        }
+
+        tripParticipantRepository.saveAll(participants);
         trip.changeStatus(TripStatus.CANCELLED);
         return tripMapper.toDto(tripRepository.save(trip));
     }
     @Transactional
     public TripResponseDto completeStatus(Long tripId) {
-        Trip trip = getTripOrThrow(tripId);
+        Trip trip = getTripForUpdateOrThrow(tripId);
         requireDriver(trip);
 
-        if (trip.getDepartureTime().isAfter(LocalDateTime.now())) {
-            throw new IllegalStateException(
-                    "Trip cannot be completed before departure time"
-            );
+        if (trip.getTripStatus() != TripStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Only IN_PROGRESS trip can be completed");
         }
 
-        trip.changeStatus(TripStatus.COMPLETED);
-        tripRepository.save(trip);
+        List<TripParticipant> participants = tripParticipantRepository.findByTripIdAndIsCancelledFalse(tripId);
+
+        if (participants.isEmpty()) {
+            throw new IllegalStateException("Trip cannot be completed without passengers");
+        }
+
+        for (TripParticipant participant : participants) {
+            if (participant.getPaymentStatus() != TripPaymentStatus.RESERVED) {
+                throw new IllegalStateException("Passenger fare is not reserved");
+            }
+        }
+
+        long totalEarning = participants.stream()
+                .mapToLong(TripParticipant::getReservedEcoCoins)
+                .reduce(0L, Math::addExact);
+
+
+        gamificationService.creditCarpoolEarning(
+                trip.getDriver().getId(),
+                trip.getId(),
+                totalEarning
+        );
+
+        participants.forEach(TripParticipant::settle);
+        tripParticipantRepository.saveAll(participants);
 
         double distanceKm = GeoUtils.distanceKm(
                 trip.getDepartureLocation(),
                 trip.getDestinationLocation()
         );
-
-        gamificationService.rewardForCompletedTrip(
+        gamificationService.recordCompletedTripActivity(
                 trip.getDriver().getId(),
                 trip.getId(),
                 distanceKm
         );
 
-        tripParticipantRepository
-                .findByTripIdAndIsCancelledFalse(trip.getId())
-                .forEach(participant ->
-                        gamificationService.rewardForCompletedTrip(
-                                participant.getPassenger().getId(),
-                                trip.getId(),
-                                distanceKm
-                        )
-                );
+        for (TripParticipant participant : participants) {
+            gamificationService.recordCompletedTripActivity(
+                    participant.getPassenger().getId(),
+                    trip.getId(),
+                    distanceKm
+            );
+        }
 
-        return tripMapper.toDto(trip);
+        trip.changeStatus(TripStatus.COMPLETED);
+        return tripMapper.toDto(tripRepository.save(trip));
     }
-
     private Point buildOriginPoint(TripSearchRequestDto request) {
-        if (request.getOriginLat() == null || request.getOriginLng() == null) {
+        boolean hasLat = request.getOriginLat() != null;
+        boolean hasLng = request.getOriginLng() != null;
+        boolean hasRadius = request.getRadiusKm() != null;
+
+        if (hasLat != hasLng) {
+            throw new IllegalArgumentException("originLat and originLng must be provided together");
+        }
+
+        if (hasRadius && !hasLat) {
+            throw new IllegalArgumentException("originLat and originLng are required when radiusKm is provided");
+        }
+
+        if (!hasLat) {
             return null;
         }
+
         String wkt = "POINT(" + request.getOriginLng() + " " + request.getOriginLat() + ")";
+
         return geometryMapper.fromWkt(wkt);
     }
 
@@ -5874,6 +6852,12 @@ public class TripService {
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id=" + id));
     }
 
+    private Trip getTripForUpdateOrThrow(Long id) {
+        return tripRepository.findByIdForUpdate(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Trip not found: id=" + id)
+                );
+    }
     private User getUserOrThrow(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: id=" + id));
@@ -6186,6 +7170,7 @@ import com.example.green.api.dto.response.WasteLogResponseDto;
 import com.example.green.api.error.ResourceNotFoundException;
 import com.example.green.api.mapper.WasteLogMapper;
 import com.example.green.domain.entity.WasteLog;
+import com.example.green.domain.enums.WasteDepositStatus;
 import com.example.green.domain.repository.WasteLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -6211,6 +7196,15 @@ public class WasteLogService {
         return wasteLogMapper.toDto(getWasteLogOrThrow(id));
     }
 
+    @Transactional(readOnly = true)
+    public List<WasteLogResponseDto> findPending() {
+        return wasteLogRepository
+                .findByStatusOrderByScannedAtAsc(WasteDepositStatus.PENDING)
+                .stream()
+                .map(wasteLogMapper::toDto)
+                .toList();
+    }
+
     private WasteLog getWasteLogOrThrow(Long id) {
         return wasteLogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WasteLog not found: id=" + id));
@@ -6230,7 +7224,6 @@ app:
     recommended-esg-threshold: 70
 
     trip:
-      coins-per-km: 2
       co2-kg-per-passenger-km: 0.12
       esg-per-completed-trip: 2
 
@@ -6241,6 +7234,9 @@ app:
       paper-co2-kg-per-kg: 0.9
       glass-co2-kg-per-kg: 0.3
       battery-co2-kg-per-kg: 2.0
+      max-weight-per-deposit-grams: 5000
+      max-daily-approved-weight-grams: 20000
+      alert-threshold-percentage: 90
 server:
   port: 65535
 spring: #application in dev mode
@@ -6297,6 +7293,194 @@ spring:
 
   profiles:
     active: dev #mode
+
+========================================
+File: ./green/src/main/resources/db/migration/V10__carpool_business_rules.sql
+========================================
+
+ALTER TABLE trips
+DROP CONSTRAINT chk_trips_status_values;
+
+ALTER TABLE trips
+    ADD CONSTRAINT chk_trips_status_values
+        CHECK (
+            trip_status IN (
+                    'CREATED',
+                    'PUBLISHED',
+                    'IN_PROGRESS',
+                    'COMPLETED',
+                    'CANCELLED'
+                )
+            );
+
+ALTER TABLE trips
+DROP CONSTRAINT chk_trips_total_seats_positive;
+
+ALTER TABLE trips
+    ADD CONSTRAINT chk_trips_total_seats_range
+        CHECK (total_seats BETWEEN 1 AND 8);
+
+ALTER TABLE trips
+    ADD CONSTRAINT chk_trips_departure_coordinates
+        CHECK (
+            ST_X(departure_location) BETWEEN -180 AND 180
+                AND ST_Y(departure_location) BETWEEN -90 AND 90
+            ),
+
+    ADD CONSTRAINT chk_trips_destination_coordinates
+        CHECK (
+            ST_X(destination_location) BETWEEN -180 AND 180
+            AND ST_Y(destination_location) BETWEEN -90 AND 90
+        );
+
+========================================
+File: ./green/src/main/resources/db/migration/V11__carpool_eco_coin_economy.sql
+========================================
+
+ALTER TABLE trips
+    ADD COLUMN price_eco_coins BIGINT NOT NULL DEFAULT 1;
+
+ALTER TABLE trips
+    ADD CONSTRAINT chk_trips_price_eco_coins
+        CHECK (price_eco_coins BETWEEN 1 AND 100000);
+
+
+ALTER TABLE trip_participants
+    ADD COLUMN reserved_eco_coins BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'RESERVED';
+
+UPDATE trip_participants participant
+SET payment_status =
+        CASE
+            WHEN participant.is_cancelled = TRUE
+                OR trip.trip_status = 'CANCELLED'
+                THEN 'REFUNDED'
+            WHEN trip.trip_status = 'COMPLETED'
+                THEN 'SETTLED'
+            ELSE 'RESERVED'
+            END
+    FROM trips trip
+WHERE participant.trip_id = trip.id;
+
+ALTER TABLE trip_participants
+    ADD CONSTRAINT chk_trip_participant_reserved_coins
+        CHECK (reserved_eco_coins >= 0),
+
+    ADD CONSTRAINT chk_trip_participant_payment_status
+        CHECK (
+            payment_status IN (
+                'RESERVED',
+                'REFUNDED',
+                'SETTLED'
+            )
+        ),
+
+    ADD CONSTRAINT chk_trip_participant_payment_consistency
+        CHECK (
+            (is_cancelled = TRUE AND payment_status = 'REFUNDED')
+            OR
+            (
+                is_cancelled = FALSE
+                AND payment_status IN ('RESERVED', 'SETTLED')
+            )
+        );
+
+
+ALTER TABLE eco_transactions
+DROP CONSTRAINT chk_eco_transactions_source;
+
+ALTER TABLE eco_transactions
+    ADD CONSTRAINT chk_eco_transactions_source
+        CHECK (
+            source IN (
+                       'TRIP_COMPLETED',
+                       'WASTE_DEPOSIT',
+                       'ADMIN_ADJUSTMENT',
+                       'CARPOOL_FARE_RESERVED',
+                       'CARPOOL_FARE_REFUND',
+                       'CARPOOL_FARE_EARNING'
+                )
+            );
+
+
+DROP INDEX uk_eco_transactions_reward;
+
+CREATE UNIQUE INDEX uk_eco_transactions_idempotent
+    ON eco_transactions(user_id, source, reference_id)
+    WHERE reference_id IS NOT NULL
+      AND source IN (
+          'TRIP_COMPLETED',
+          'WASTE_DEPOSIT',
+          'ADMIN_ADJUSTMENT',
+          'CARPOOL_FARE_EARNING'
+      );
+
+
+DROP INDEX idx_users_leaderboard;
+
+CREATE INDEX idx_users_leaderboard
+    ON users(
+             esg_rating DESC,
+             total_co2_saved DESC,
+             id ASC
+        )
+    WHERE role IN ('STUDENT', 'EMPLOYEE');
+
+========================================
+File: ./green/src/main/resources/db/migration/V12__waste_deposit_approval.sql
+========================================
+
+ALTER TABLE waste_logs
+    ADD COLUMN waste_type VARCHAR(20),
+    ADD COLUMN fullness_delta_percentage INTEGER
+        NOT NULL DEFAULT 0,
+    ADD COLUMN status VARCHAR(20)
+        NOT NULL DEFAULT 'APPROVED',
+    ADD COLUMN reviewed_by_id BIGINT,
+    ADD COLUMN reviewed_at TIMESTAMP;
+
+ALTER TABLE waste_logs
+    ALTER COLUMN waste_type SET NOT NULL,
+
+ALTER COLUMN status SET DEFAULT 'PENDING';
+
+
+ALTER TABLE waste_logs
+    ADD CONSTRAINT fk_waste_logs_reviewed_by
+        FOREIGN KEY (reviewed_by_id)
+            REFERENCES users(id)
+            ON DELETE SET NULL,
+
+    ADD CONSTRAINT chk_waste_logs_type
+        CHECK (
+            waste_type IN (
+                'PLASTIC',
+                'BATTERY',
+                'PAPER',
+                'GLASS'
+            )
+        ),
+
+    ADD CONSTRAINT chk_waste_logs_fullness_delta
+        CHECK (
+            fullness_delta_percentage
+                BETWEEN 0 AND 100
+        ),
+
+    ADD CONSTRAINT chk_waste_logs_status
+        CHECK (
+            status IN (
+                'PENDING',
+                'APPROVED',
+                'REJECTED'
+            )
+        );
+
+
+CREATE INDEX idx_waste_logs_status_scanned
+    ON waste_logs(status, scanned_at);
+CREATE INDEX idx_waste_logs_user_approved_day
+    ON waste_logs(user_id, status, reviewed_at);
 
 ========================================
 File: ./green/src/main/resources/db/migration/V1__init_schema.sql

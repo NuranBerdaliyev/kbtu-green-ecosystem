@@ -2,7 +2,8 @@ package com.example.green.domain.enums;
 
 public enum TripStatus {
     CREATED,
-    ACTIVE,
+    PUBLISHED,
+    IN_PROGRESS,
     COMPLETED,
     CANCELLED
 }
