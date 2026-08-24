@@ -1,19 +1,44 @@
 <script setup>
-import { RouterLink, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { formatNumber } from '@/utils/format'
-import { ROLES } from '@/utils/constants'
+import { ROLES, ROLE_LABELS } from '@/utils/constants'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
-const links = [
-  { name: 'home', label: 'Главная' },
-  { name: 'trips', label: 'Поездки' },
-  { name: 'eco-map', label: 'Контейнеры' },
-  { name: 'vacancies', label: 'Вакансии' },
-  { name: 'leaderboard', label: 'Рейтинг' },
-]
+/** Navigation is role-aware: HR and ADMIN get their own sections. */
+const links = computed(() => {
+  const base = [
+    { name: 'home', label: 'Главная' },
+    { name: 'trips', label: 'Поездки' },
+    { name: 'eco-map', label: 'Контейнеры' },
+    { name: 'vacancies', label: 'Вакансии' },
+    { name: 'companies', label: 'Компании' },
+    { name: 'leaderboard', label: 'Рейтинг' },
+  ]
+
+  if (auth.hasRole(ROLES.HR)) {
+    base.push({ name: 'my-company', label: 'Мои компании' })
+    base.push({ name: 'my-vacancies', label: 'Мои вакансии' })
+  }
+  if (auth.hasRole(ROLES.ADMIN)) {
+    base.push({ name: 'admin', label: 'Админ' })
+  }
+  return base
+})
+
+/**
+ * router-link-active matches by prefix, and every path starts with "/",
+ * so the Home link would stay lit everywhere. Home is matched exactly;
+ * the rest match by prefix so /trips/5 still highlights "Поездки".
+ */
+function isActive(link) {
+  const target = router.resolve({ name: link.name }).path
+  return target === '/' ? route.path === '/' : route.path.startsWith(target)
+}
 
 function signOut() {
   auth.logout()
@@ -30,19 +55,24 @@ function signOut() {
       </RouterLink>
 
       <nav class="nav">
-        <RouterLink v-for="link in links" :key="link.name" :to="{ name: link.name }">
+        <RouterLink
+          v-for="link in links"
+          :key="link.name"
+          :to="{ name: link.name }"
+          :class="{ 'is-active': isActive(link) }"
+        >
           {{ link.label }}
         </RouterLink>
-        <RouterLink v-if="auth.hasRole(ROLES.ADMIN)" :to="{ name: 'admin' }">Админ</RouterLink>
       </nav>
 
       <div class="header__side">
-        <span class="coins" title="EcoCoins">
+        <RouterLink :to="{ name: 'profile' }" class="coins" title="EcoCoins">
           <span class="metric">{{ formatNumber(auth.stats?.ecoCoinsBalance) }}</span>
           EC
-        </span>
+        </RouterLink>
         <RouterLink :to="{ name: 'profile' }" class="profile-link">
-          {{ auth.firstName || 'Профиль' }}
+          <span class="profile-link__name">{{ auth.firstName || 'Профиль' }}</span>
+          <span class="profile-link__role">{{ ROLE_LABELS[auth.role] ?? '' }}</span>
         </RouterLink>
         <button class="signout" type="button" @click="signOut">Выйти</button>
       </div>
@@ -102,7 +132,7 @@ function signOut() {
   color: var(--c-ink);
 }
 
-.nav a.router-link-active {
+.nav a.is-active {
   color: var(--c-moss);
   border-bottom-color: var(--c-moss);
 }
@@ -123,6 +153,17 @@ function signOut() {
   color: var(--c-coin);
   border-radius: 999px;
   font-weight: 600;
+}
+
+.profile-link {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.profile-link__role {
+  font-size: var(--text-xs);
+  color: var(--c-ink-muted);
 }
 
 .signout {

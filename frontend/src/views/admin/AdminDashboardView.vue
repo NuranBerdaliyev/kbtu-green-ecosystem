@@ -1,53 +1,52 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { adminApi } from '@/api/admin'
-import { containersAdminApi } from '@/api/ecoWaste'
 import { useAsync } from '@/composables/useAsync'
 import { useEcoContainerSocket } from '@/composables/useEcoContainerSocket'
 import { formatNumber } from '@/utils/format'
-import { WASTE_TYPE_LABELS } from '@/utils/constants'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
-import FullnessBar from '@/components/common/FullnessBar.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 
-const tab = ref('overview')
-
 const dashboard = useAsync(adminApi.dashboard)
-const containers = useAsync(containersAdminApi.findAll, [])
 const vacancies = useAsync(() => adminApi.vacancies(0, 20))
 
 const alerts = ref([])
 const toggling = ref(null)
+const actionError = ref('')
 
 // Containers past 90% publish to /topic/admin/alerts.
 useEcoContainerSocket({
   onAlert(message) {
     alerts.value = [{ id: Date.now(), message }, ...alerts.value].slice(0, 5)
   },
-  onContainer(updated) {
-    const list = containers.data.value ?? []
-    containers.data.value = list.map((c) => (c.id === updated.id ? updated : c))
-  },
 })
 
 async function toggleVacancy(vacancy) {
   toggling.value = vacancy.id
+  actionError.value = ''
   try {
     await adminApi.setVacancyStatus(vacancy.id, !vacancy.isActive)
     await vacancies.run()
+  } catch (e) {
+    actionError.value = e.message
   } finally {
     toggling.value = null
   }
 }
 
-function switchTab(next) {
-  tab.value = next
-  if (next === 'containers' && !containers.data.value?.length) containers.run()
-  if (next === 'vacancies' && !vacancies.data.value) vacancies.run()
-}
+const sections = [
+  { name: 'admin-containers', label: 'Контейнеры', text: 'Создание, правка, отметка о вывозе' },
+  { name: 'admin-companies', label: 'Компании', text: 'Подтверждение партнёрства' },
+  { name: 'admin-users', label: 'Пользователи', text: 'Назначение ролей' },
+  { name: 'admin-waste-logs', label: 'Журнал отходов', text: 'История сдачи' },
+]
 
-onMounted(dashboard.run)
+onMounted(() => {
+  dashboard.run()
+  vacancies.run()
+})
 
 const metrics = [
   { key: 'totalUsers', label: 'Пользователи' },
@@ -77,20 +76,19 @@ const metrics = [
       </ul>
     </div>
 
-    <nav class="tabs">
-      <button :class="{ active: tab === 'overview' }" type="button" @click="switchTab('overview')">
-        Обзор
-      </button>
-      <button :class="{ active: tab === 'containers' }" type="button" @click="switchTab('containers')">
-        Контейнеры
-      </button>
-      <button :class="{ active: tab === 'vacancies' }" type="button" @click="switchTab('vacancies')">
-        Вакансии
-      </button>
+    <nav class="sections">
+      <RouterLink
+        v-for="section in sections"
+        :key="section.name"
+        :to="{ name: section.name }"
+        class="card section"
+      >
+        <h3>{{ section.label }}</h3>
+        <p class="text-muted">{{ section.text }}</p>
+      </RouterLink>
     </nav>
 
     <StateBlock
-      v-if="tab === 'overview'"
       :loading="dashboard.loading.value"
       :error="dashboard.error.value ?? ''"
       @retry="dashboard.run"
@@ -102,7 +100,10 @@ const metrics = [
             :class="[
               'metric',
               'metric-card__value',
-              { 'metric-card__value--alert': metric.key === 'criticalContainers' && dashboard.data.value?.[metric.key] > 0 },
+              {
+                'metric-card__value--alert':
+                  metric.key === 'criticalContainers' && dashboard.data.value?.[metric.key] > 0,
+              },
             ]"
           >
             {{ formatNumber(dashboard.data.value?.[metric.key]) }}
@@ -111,52 +112,33 @@ const metrics = [
       </ul>
     </StateBlock>
 
-    <StateBlock
-      v-else-if="tab === 'containers'"
-      :loading="containers.loading.value"
-      :error="containers.error.value ?? ''"
-      :empty="(containers.data.value ?? []).length === 0"
-      empty-title="Контейнеров нет"
-      @retry="containers.run"
-    >
-      <ul class="list">
-        <li v-for="c in containers.data.value" :key="c.id" class="card bin">
-          <div class="bin__info">
-            <h3>{{ c.title }}</h3>
-            <p class="text-muted">
-              {{ WASTE_TYPE_LABELS[c.wasteType] }} ·
-              {{ c.isActive ? 'активен' : 'отключён' }}
-            </p>
-          </div>
-          <FullnessBar :value="c.fullnessPercentage" />
-        </li>
-      </ul>
-    </StateBlock>
-
-    <StateBlock
-      v-else
-      :loading="vacancies.loading.value"
-      :error="vacancies.error.value ?? ''"
-      :empty="(vacancies.data.value?.content ?? []).length === 0"
-      empty-title="Вакансий нет"
-      @retry="vacancies.run"
-    >
-      <ul class="list">
-        <li v-for="v in vacancies.data.value.content" :key="v.id" class="card vacancy">
-          <div>
-            <h3>{{ v.title }}</h3>
-            <p class="text-muted">{{ v.companyName }}</p>
-          </div>
-          <BaseButton
-            :variant="v.isActive ? 'danger' : 'primary'"
-            :loading="toggling === v.id"
-            @click="toggleVacancy(v)"
-          >
-            {{ v.isActive ? 'Снять с публикации' : 'Опубликовать' }}
-          </BaseButton>
-        </li>
-      </ul>
-    </StateBlock>
+    <section class="stack">
+      <h2>Модерация вакансий</h2>
+      <p v-if="actionError" class="error">{{ actionError }}</p>
+      <StateBlock
+        :loading="vacancies.loading.value"
+        :error="vacancies.error.value ?? ''"
+        :empty="(vacancies.data.value?.content ?? []).length === 0"
+        empty-title="Вакансий нет"
+        @retry="vacancies.run"
+      >
+        <ul class="list">
+          <li v-for="v in vacancies.data.value.content" :key="v.id" class="card vacancy">
+            <div>
+              <h3>{{ v.title }}</h3>
+              <p class="text-muted">{{ v.companyName }}</p>
+            </div>
+            <BaseButton
+              :variant="v.isActive ? 'danger' : 'primary'"
+              :loading="toggling === v.id"
+              @click="toggleVacancy(v)"
+            >
+              {{ v.isActive ? 'Снять с публикации' : 'Опубликовать' }}
+            </BaseButton>
+          </li>
+        </ul>
+      </StateBlock>
+    </section>
   </div>
 </template>
 
@@ -179,26 +161,34 @@ const metrics = [
   font-size: var(--text-sm);
 }
 
-.tabs {
-  display: flex;
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--c-line);
+.sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
 }
 
-.tabs button {
-  padding: var(--space-3) var(--space-4);
-  border: none;
-  background: none;
-  border-bottom: 2px solid transparent;
-  color: var(--c-ink-muted);
+.section {
+  padding: var(--space-4);
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.section:hover {
+  border-color: var(--c-moss);
+  transform: translateY(-2px);
+}
+
+h2 {
+  font-size: var(--text-lg);
+}
+
+.error {
+  padding: var(--space-3);
+  background: var(--c-danger-soft);
+  border-radius: var(--radius-sm);
+  color: var(--c-danger);
   font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.tabs button.active {
-  color: var(--c-moss);
-  border-bottom-color: var(--c-moss);
 }
 
 .metrics {
@@ -230,17 +220,12 @@ const metrics = [
   gap: var(--space-3);
 }
 
-.bin,
 .vacancy {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
   padding: var(--space-4);
-}
-
-.bin__info {
-  min-width: 200px;
 }
 
 h3 {

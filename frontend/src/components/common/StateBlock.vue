@@ -40,7 +40,12 @@ defineEmits(['retry'])
 .skeleton {
   height: 92px;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, var(--c-surface-sunk) 25%, #e8ebe4 50%, var(--c-surface-sunk) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--c-surface-sunk) 25%,
+    #e8ebe4 50%,
+    var(--c-surface-sunk) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }

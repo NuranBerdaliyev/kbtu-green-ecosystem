@@ -56,16 +56,41 @@ async function reload() {
   await Promise.all([trip.run(), participants.run()])
 }
 
-/** Every action returns the updated trip, so we refresh both lists after. */
+/**
+ * Every action returns the updated trip, so we refresh both lists after.
+ * Completing a trip awards EcoCoins, so the header figures are refreshed too.
+ */
 async function act(name, fn) {
   acting.value = name
   actionError.value = ''
   try {
     await fn()
     await reload()
+    if (name === 'complete' || name === 'join' || name === 'leave') await auth.loadStats()
   } catch (e) {
     actionError.value = e.message
   } finally {
+    acting.value = ''
+  }
+}
+
+/** The backend refuses completion until the departure time has passed. */
+const departed = computed(
+  () => trip.data.value && new Date(trip.data.value.departureTime) <= new Date(),
+)
+
+/** Solo trips earn nothing — warn the driver before they finish. */
+const hasPassengers = computed(() => (participants.data.value ?? []).length > 0)
+
+async function removeTrip() {
+  if (!window.confirm('Удалить поездку? Действие необратимо.')) return
+  acting.value = 'delete'
+  actionError.value = ''
+  try {
+    await tripsApi.remove(tripId)
+    router.push({ name: 'trips' })
+  } catch (e) {
+    actionError.value = e.message
     acting.value = ''
   }
 }
@@ -139,27 +164,54 @@ onMounted(reload)
                   :loading="acting === 'activate'"
                   @click="act('activate', () => tripsApi.activate(tripId))"
                 >
-                  Начать поездку
+                  Опубликовать в поиске
                 </BaseButton>
                 <BaseButton
                   v-if="trip.data.value.tripStatus === 'ACTIVE'"
                   :loading="acting === 'complete'"
+                  :disabled="!departed"
                   @click="act('complete', () => tripsApi.complete(tripId))"
                 >
                   Завершить поездку
                 </BaseButton>
+                <p
+                  v-if="trip.data.value.tripStatus === 'ACTIVE' && !departed"
+                  class="text-muted note"
+                >
+                  Завершить можно после времени выезда.
+                </p>
+                <p
+                  v-else-if="trip.data.value.tripStatus === 'ACTIVE' && !hasPassengers"
+                  class="warn"
+                >
+                  В поездке нет пассажиров — это не совместная поездка.
+                </p>
                 <BaseButton
                   v-if="['CREATED', 'ACTIVE'].includes(trip.data.value.tripStatus)"
-                  variant="danger"
+                  variant="ghost"
                   :loading="acting === 'cancel'"
                   @click="act('cancel', () => tripsApi.cancel(tripId))"
                 >
                   Отменить поездку
                 </BaseButton>
+                <BaseButton
+                  v-if="trip.data.value.tripStatus === 'CREATED'"
+                  variant="danger"
+                  :loading="acting === 'delete'"
+                  @click="removeTrip"
+                >
+                  Удалить
+                </BaseButton>
               </template>
 
               <p v-if="isDriver && trip.data.value.tripStatus === 'ACTIVE'" class="text-muted note">
                 EcoCoins начисляются всем участникам после завершения поездки.
+              </p>
+              <p
+                v-if="!isDriver && !canJoin && !hasJoined && trip.data.value.availableSeats === 0"
+                class="text-muted note"
+              >
+                Свободных мест не осталось.
               </p>
             </div>
 
@@ -170,7 +222,9 @@ onMounted(reload)
               </p>
               <ul v-else class="passengers">
                 <li v-for="p in participants.data.value" :key="p.id">
-                  <span>{{ p.passengerId === auth.userId ? 'Вы' : `Пользователь #${p.passengerId}` }}</span>
+                  <span>{{
+                    p.passengerId === auth.userId ? 'Вы' : `Пользователь #${p.passengerId}`
+                  }}</span>
                   <span class="text-muted">{{ formatDateTime(p.joinedAt) }}</span>
                 </li>
               </ul>
@@ -240,6 +294,14 @@ dd {
 }
 
 .note {
+  font-size: var(--text-sm);
+}
+
+.warn {
+  padding: var(--space-3);
+  background: var(--c-coin-soft);
+  border-radius: var(--radius-sm);
+  color: var(--c-coin);
   font-size: var(--text-sm);
 }
 

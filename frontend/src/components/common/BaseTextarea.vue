@@ -18,7 +18,9 @@ const counter = computed(() => {
   return `${model.value.length} / ${props.maxLength}`
 })
 
-const tooShort = computed(() => props.minLength > 0 && model.value.length > 0 && model.value.length < props.minLength)
+const tooShort = computed(
+  () => props.minLength > 0 && model.value.length > 0 && model.value.length < props.minLength,
+)
 </script>
 
 <template>

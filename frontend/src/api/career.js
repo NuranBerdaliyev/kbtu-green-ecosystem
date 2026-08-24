@@ -29,7 +29,9 @@ export const applicationsApi = {
   myApplications: () => http.get('/career/applications/my').then((r) => r.data),
   /** HR view: candidates sorted by ESG_DESC or APPLIED_AT_DESC. */
   candidates: (vacancyId, sort = 'ESG_DESC') =>
-    http.get(`/career/vacancies/${vacancyId}/applications`, { params: { sort } }).then((r) => r.data),
+    http
+      .get(`/career/vacancies/${vacancyId}/applications`, { params: { sort } })
+      .then((r) => r.data),
   changeStatus: (applicationId, status) =>
     http.patch(`/career/applications/${applicationId}/status`, { status }).then((r) => r.data),
 }

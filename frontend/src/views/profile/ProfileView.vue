@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { profileApi } from '@/api/profile'
 import { gamificationApi } from '@/api/gamification'
 import { applicationsApi } from '@/api/career'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/composables/useAsync'
 import { formatNumber, formatCo2, formatDelta, formatDateTime } from '@/utils/format'
 import { ECO_SOURCE_LABELS, ESG_RATING_MAX, ROLE_LABELS } from '@/utils/constants'
+import { can } from '@/utils/roles'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -18,7 +19,22 @@ const auth = useAuthStore()
 
 const history = useAsync(() => gamificationApi.history(0, 20))
 const applications = useAsync(applicationsApi.myApplications, [])
-const profile = useAsync(profileApi.me)
+
+/**
+ * Registration does not create a Profile row, so GET /profiles/me returns 404
+ * until the user saves once. That is an empty state, not an error.
+ */
+const profile = useAsync(async () => {
+  try {
+    return await profileApi.me()
+  } catch (e) {
+    if (e.status === 404) return null
+    throw e
+  }
+})
+
+/** Only students have job applications; other roles get a 403. */
+const showsApplications = computed(() => can.applyToVacancy(auth.role))
 
 const editing = ref(false)
 const saving = ref(false)
@@ -28,7 +44,13 @@ const form = reactive({ phone: '', bio: '', birthDate: '', avatarUrl: '' })
 async function startEdit() {
   editing.value = true
   const p = profile.data.value
-  if (p) Object.assign(form, { phone: p.phone ?? '', bio: p.bio ?? '', birthDate: p.birthDate ?? '', avatarUrl: p.avatarUrl ?? '' })
+  if (p)
+    Object.assign(form, {
+      phone: p.phone ?? '',
+      bio: p.bio ?? '',
+      birthDate: p.birthDate ?? '',
+      avatarUrl: p.avatarUrl ?? '',
+    })
 }
 
 async function save() {
@@ -53,8 +75,8 @@ async function save() {
 onMounted(() => {
   auth.loadStats()
   history.run()
-  applications.run()
   profile.run()
+  if (showsApplications.value) applications.run()
 })
 </script>
 
@@ -132,7 +154,7 @@ onMounted(() => {
         </StateBlock>
       </section>
 
-      <section class="stack">
+      <section v-if="showsApplications" class="stack">
         <h2>Мои отклики</h2>
         <StateBlock
           :loading="applications.loading.value"

@@ -14,16 +14,18 @@ router.beforeEach(async (to) => {
   // Rehydrate the session once after a hard refresh.
   await auth.restoreSession()
 
-  //if (to.meta.requiresAuth && !auth.isAuthenticated) {
- //   return { name: 'login', query: { redirect: to.fullPath } }
-  //}
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'home' }
   }
 
+  // Role is read from the JWT identity; a role changed by an admin only takes
+  // effect after the user signs in again.
   if (to.meta.roles?.length && !to.meta.roles.includes(auth.role)) {
-    return { name: 'home' }
+    return { name: 'home', query: { forbidden: to.name } }
   }
 
   return true

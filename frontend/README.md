@@ -82,3 +82,7 @@ container after each deposit) and `/topic/admin/alerts` (string, fires past
 - Spring `Page` responses are `{ content, totalPages, number, ... }`; plain
   list endpoints return arrays. Check which one you are calling.
 
+## Stage 2 design
+
+See [`docs/STAGE-2-FRONTEND.md`](docs/STAGE-2-FRONTEND.md) for the navigation
+map, screen specs, and the open questions for the backend team.

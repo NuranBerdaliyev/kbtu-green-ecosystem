@@ -110,3 +110,20 @@ export const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/
 /** Container is treated as critical at this fullness (backend alerts at 90). */
 export const FULLNESS_CRITICAL = 90
 export const FULLNESS_WARNING = 70
+
+/**
+ * Allowed JobStatus transitions, mirroring JobApplicationService.
+ * ACCEPTED and REJECTED are terminal — no buttons should be offered there.
+ */
+export const JOB_STATUS_TRANSITIONS = {
+  PENDING: ['REVIEWED'],
+  REVIEWED: ['ACCEPTED', 'REJECTED'],
+  ACCEPTED: [],
+  REJECTED: [],
+}
+
+/** Reward is 1 coin per 100 g, but the backend floors at 1 coin per deposit. */
+export const GRAMS_PER_COIN = 100
+
+/** Deposits into a container at 100% are rejected. */
+export const FULLNESS_MAX = 100

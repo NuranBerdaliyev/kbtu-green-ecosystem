@@ -6,12 +6,15 @@ import { useAsync } from '@/composables/useAsync'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
 
-const filters = reactive({ query: '', partnerOnly: false, page: 0 })
+/**
+ * There is no partnerOnly filter: VacancyService already returns only
+ * vacancies from partner companies, so the toggle would change nothing.
+ */
+const filters = reactive({ query: '', page: 0 })
 
 const vacancies = useAsync(() => {
   const params = { page: filters.page, size: 20 }
   if (filters.query.trim()) params.query = filters.query.trim()
-  if (filters.partnerOnly) params.partnerOnly = true
   return vacanciesApi.search(params)
 })
 
@@ -42,19 +45,7 @@ onMounted(vacancies.run)
         placeholder="Поиск по названию"
         @input="onSearch"
       />
-      <label class="check">
-        <input
-          v-model="filters.partnerOnly"
-          type="checkbox"
-          @change="
-            () => {
-              filters.page = 0
-              vacancies.run()
-            }
-          "
-        />
-        Только компании-партнёры
-      </label>
+      <p class="text-muted check">Показаны вакансии компаний-партнёров.</p>
     </div>
 
     <StateBlock
@@ -62,7 +53,7 @@ onMounted(vacancies.run)
       :error="vacancies.error.value ?? ''"
       :empty="(vacancies.data.value?.content ?? []).length === 0"
       empty-title="Вакансий не найдено"
-      empty-text="Измените запрос или снимите фильтр партнёров."
+      empty-text="Попробуйте изменить поисковый запрос."
       @retry="vacancies.run"
     >
       <ul class="list">
@@ -96,9 +87,7 @@ onMounted(vacancies.run)
         >
           Назад
         </button>
-        <span class="metric">
-          {{ filters.page + 1 }} / {{ vacancies.data.value.totalPages }}
-        </span>
+        <span class="metric"> {{ filters.page + 1 }} / {{ vacancies.data.value.totalPages }} </span>
         <button
           type="button"
           :disabled="filters.page + 1 >= vacancies.data.value.totalPages"

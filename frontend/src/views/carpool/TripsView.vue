@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { tripsApi } from '@/api/trips'
 import { useAsync } from '@/composables/useAsync'
@@ -52,6 +52,9 @@ const listFor = (name) =>
     my: mine.data.value ?? [],
     joined: joined.data.value ?? [],
   })[name]
+
+// Each tab has its own request, so it must show its own loading and error.
+const active = computed(() => ({ search, my: mine, joined })[tab.value])
 </script>
 
 <template>
@@ -103,8 +106,8 @@ const listFor = (name) =>
     </div>
 
     <StateBlock
-      :loading="search.loading.value && tab === 'search'"
-      :error="search.error.value ?? ''"
+      :loading="active.loading.value"
+      :error="active.error.value ?? ''"
       :empty="listFor(tab).length === 0"
       empty-title="Поездок не найдено"
       empty-text="Попробуйте увеличить радиус или создайте свою поездку."

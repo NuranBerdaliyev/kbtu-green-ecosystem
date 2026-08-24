@@ -108,13 +108,19 @@ onMounted(containers.run)
             :class="[
               'card',
               'bin',
-              { 'bin--selected': container.id === selectedId, 'bin--live': container.id === liveUpdatedId },
+              {
+                'bin--selected': container.id === selectedId,
+                'bin--live': container.id === liveUpdatedId,
+              },
             ]"
             @click="selectedId = container.id"
           >
             <div class="bin__top">
               <h3>{{ container.title }}</h3>
-              <span class="swatch" :style="{ background: WASTE_TYPE_COLORS[container.wasteType] }" />
+              <span
+                class="swatch"
+                :style="{ background: WASTE_TYPE_COLORS[container.wasteType] }"
+              />
             </div>
             <p class="text-muted bin__type">{{ WASTE_TYPE_LABELS[container.wasteType] }}</p>
             <FullnessBar :value="container.fullnessPercentage" />

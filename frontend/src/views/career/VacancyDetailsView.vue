@@ -4,7 +4,14 @@ import { useRoute } from 'vue-router'
 import { vacanciesApi, applicationsApi } from '@/api/career'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/composables/useAsync'
-import { COVER_LETTER_MIN, COVER_LETTER_MAX, ROLES, CANDIDATE_SORT } from '@/utils/constants'
+import { can } from '@/utils/roles'
+import {
+  COVER_LETTER_MIN,
+  COVER_LETTER_MAX,
+  CANDIDATE_SORT,
+  JOB_STATUS_LABELS,
+  JOB_STATUS_TRANSITIONS,
+} from '@/utils/constants'
 import { formatNumber, formatCo2, formatDateTime } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
@@ -17,25 +24,38 @@ const auth = useAuthStore()
 const vacancyId = Number(route.params.id)
 
 const vacancy = useAsync(() => vacanciesApi.findById(vacancyId))
-const isHr = computed(() => auth.hasRole(ROLES.HR))
 
-// Student side
+/** Only students may apply; the backend rejects everyone else with 403. */
+const canApplyByRole = computed(() => can.applyToVacancy(auth.role))
+/** Only the vacancy owner may list candidates, so check ownership, not just role. */
+const ownsVacancy = computed(
+  () => can.reviewCandidates(auth.role) && vacancy.data.value?.hrManagerId === auth.userId,
+)
+
+// ---- student side ----------------------------------------------------------
+const myApplications = useAsync(applicationsApi.myApplications, [])
 const coverLetter = ref('')
 const applying = ref(false)
 const applyError = ref('')
-const applied = ref(false)
 
-const canApply = computed(
-  () => coverLetter.value.length >= COVER_LETTER_MIN && coverLetter.value.length <= COVER_LETTER_MAX,
+/** Survives a page reload, unlike a local "submitted" flag. */
+const existingApplication = computed(() =>
+  (myApplications.data.value ?? []).find((a) => a.vacancyId === vacancyId),
+)
+
+const canSubmit = computed(
+  () =>
+    coverLetter.value.length >= COVER_LETTER_MIN && coverLetter.value.length <= COVER_LETTER_MAX,
 )
 
 async function apply() {
-  if (!canApply.value) return
+  if (!canSubmit.value) return
   applying.value = true
   applyError.value = ''
   try {
     await applicationsApi.apply(vacancyId, coverLetter.value)
-    applied.value = true
+    await myApplications.run()
+    coverLetter.value = ''
   } catch (e) {
     applyError.value = e.message
   } finally {
@@ -43,16 +63,23 @@ async function apply() {
   }
 }
 
-// HR side
+// ---- HR side ---------------------------------------------------------------
 const sort = ref(CANDIDATE_SORT.ESG_DESC)
 const candidates = useAsync(() => applicationsApi.candidates(vacancyId, sort.value), [])
 const changing = ref(null)
+const statusError = ref('')
+
+/** The backend allows PENDING -> REVIEWED -> ACCEPTED|REJECTED and nothing else. */
+const nextStatuses = (status) => JOB_STATUS_TRANSITIONS[status] ?? []
 
 async function setStatus(applicationId, status) {
   changing.value = applicationId
+  statusError.value = ''
   try {
     await applicationsApi.changeStatus(applicationId, status)
     await candidates.run()
+  } catch (e) {
+    statusError.value = e.message
   } finally {
     changing.value = null
   }
@@ -60,13 +87,19 @@ async function setStatus(applicationId, status) {
 
 onMounted(async () => {
   await vacancy.run()
-  if (isHr.value) candidates.run()
+  if (ownsVacancy.value) candidates.run()
+  if (canApplyByRole.value) myApplications.run()
 })
 </script>
 
 <template>
   <div class="stack">
-    <StateBlock :loading="vacancy.loading.value" :error="vacancy.error.value ?? ''" :skeletons="2" @retry="vacancy.run">
+    <StateBlock
+      :loading="vacancy.loading.value"
+      :error="vacancy.error.value ?? ''"
+      :skeletons="2"
+      @retry="vacancy.run"
+    >
       <template v-if="vacancy.data.value">
         <PageHeader
           :eyebrow="vacancy.data.value.companyName"
@@ -80,11 +113,15 @@ onMounted(async () => {
             <p>{{ vacancy.data.value.description }}</p>
           </article>
 
-          <aside v-if="!isHr" class="card stack">
-            <template v-if="applied">
-              <p class="eyebrow">Отклик отправлен</p>
+          <aside v-if="canApplyByRole" class="card stack">
+            <template v-if="existingApplication">
+              <p class="eyebrow">Вы откликнулись</p>
+              <div class="row">
+                <StatusBadge :status="existingApplication.jobStatus" kind="job" />
+                <span class="text-muted">{{ formatDateTime(existingApplication.appliedAt) }}</span>
+              </div>
               <p class="text-muted">
-                HR увидит ваш ESG-рейтинг и историю экологической активности.
+                Статус изменится, когда HR рассмотрит отклик. Повторно откликнуться нельзя.
               </p>
             </template>
             <template v-else>
@@ -97,14 +134,21 @@ onMounted(async () => {
                 :max-length="COVER_LETTER_MAX"
               />
               <p v-if="applyError" class="error">{{ applyError }}</p>
-              <BaseButton :loading="applying" :disabled="!canApply" @click="apply">
+              <BaseButton :loading="applying" :disabled="!canSubmit" @click="apply">
                 Отправить отклик
               </BaseButton>
+              <p class="text-muted hint">
+                HR увидит ваш ESG-рейтинг, баланс EcoCoins и сокращённый CO₂.
+              </p>
             </template>
+          </aside>
+
+          <aside v-else-if="!ownsVacancy" class="card">
+            <p class="text-muted">Откликаться на вакансии могут только студенты.</p>
           </aside>
         </div>
 
-        <section v-if="isHr" class="stack">
+        <section v-if="ownsVacancy" class="stack">
           <div class="candidates__head">
             <h2>Кандидаты</h2>
             <select v-model="sort" @change="candidates.run()">
@@ -112,6 +156,8 @@ onMounted(async () => {
               <option :value="CANDIDATE_SORT.APPLIED_AT_DESC">Сначала новые</option>
             </select>
           </div>
+
+          <p v-if="statusError" class="error">{{ statusError }}</p>
 
           <StateBlock
             :loading="candidates.loading.value"
@@ -150,28 +196,21 @@ onMounted(async () => {
 
                 <p class="candidate__letter">{{ c.coverLetter }}</p>
 
-                <div class="row">
+                <!-- Only transitions the backend actually allows are offered. -->
+                <div v-if="nextStatuses(c.jobStatus).length" class="row">
                   <BaseButton
-                    variant="ghost"
+                    v-for="next in nextStatuses(c.jobStatus)"
+                    :key="next"
+                    :variant="
+                      next === 'REJECTED' ? 'danger' : next === 'REVIEWED' ? 'ghost' : 'primary'
+                    "
                     :loading="changing === c.applicationId"
-                    @click="setStatus(c.applicationId, 'REVIEWED')"
+                    @click="setStatus(c.applicationId, next)"
                   >
-                    Просмотрен
-                  </BaseButton>
-                  <BaseButton
-                    :loading="changing === c.applicationId"
-                    @click="setStatus(c.applicationId, 'ACCEPTED')"
-                  >
-                    Принять
-                  </BaseButton>
-                  <BaseButton
-                    variant="danger"
-                    :loading="changing === c.applicationId"
-                    @click="setStatus(c.applicationId, 'REJECTED')"
-                  >
-                    Отклонить
+                    {{ JOB_STATUS_LABELS[next] }}
                   </BaseButton>
                 </div>
+                <p v-else class="text-muted hint">Решение принято, статус изменить нельзя.</p>
               </li>
             </ul>
           </StateBlock>
@@ -279,6 +318,10 @@ dd {
   color: var(--c-ink-soft);
   white-space: pre-line;
   margin-bottom: var(--space-4);
+}
+
+.hint {
+  font-size: var(--text-sm);
 }
 
 .error {

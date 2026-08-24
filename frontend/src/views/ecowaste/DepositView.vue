@@ -4,7 +4,12 @@ import { RouterLink } from 'vue-router'
 import { ecoPointsApi } from '@/api/ecoWaste'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/composables/useAsync'
-import { WASTE_TYPE_LABELS, WASTE_TYPE_COLORS } from '@/utils/constants'
+import {
+  WASTE_TYPE_LABELS,
+  WASTE_TYPE_COLORS,
+  GRAMS_PER_COIN,
+  FULLNESS_MAX,
+} from '@/utils/constants'
 import { formatNumber } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
@@ -25,15 +30,29 @@ const form = reactive({
   addedFullnessPercentage: 5,
 })
 
+/** A container at 100% rejects deposits, so it cannot be chosen. */
+const isFull = (container) => container.fullnessPercentage >= FULLNESS_MAX
+
 const canSubmit = computed(
-  () => selected.value && form.wasteWeightGrams >= 1 && form.addedFullnessPercentage >= 1,
+  () =>
+    selected.value &&
+    !isFull(selected.value) &&
+    form.wasteWeightGrams >= 1 &&
+    form.addedFullnessPercentage >= 1,
 )
 
 /**
- * 100 g earns 1 coin (app.gamification.waste.grams-per-coin in the backend
- * config), so this is only a preview — the server recalculates.
+ * The backend awards 1 coin per 100 g but never less than 1 per deposit,
+ * so the preview floors at 1 rather than showing 0 for small amounts.
  */
-const estimatedCoins = computed(() => Math.floor(form.wasteWeightGrams / 100))
+const estimatedCoins = computed(() =>
+  Math.max(1, Math.floor(form.wasteWeightGrams / GRAMS_PER_COIN)),
+)
+
+function select(container) {
+  if (isFull(container)) return
+  selected.value = container
+}
 
 async function submit() {
   if (!canSubmit.value) return
@@ -90,14 +109,22 @@ onMounted(containers.run)
           <div class="stack">
             <h2>1. Выберите контейнер</h2>
             <p class="text-muted hint">
-              На контейнере есть QR-код. Отсканируйте его или выберите из списка.
+              Выберите контейнер, в который сдаёте отходы. Вес указываете вы — автоматического
+              подтверждения пока нет.
             </p>
             <ul class="list">
               <li
                 v-for="container in containers.data.value"
                 :key="container.id"
-                :class="['card', 'bin', { 'bin--selected': selected?.id === container.id }]"
-                @click="selected = container"
+                :class="[
+                  'card',
+                  'bin',
+                  {
+                    'bin--selected': selected?.id === container.id,
+                    'bin--full': isFull(container),
+                  },
+                ]"
+                @click="select(container)"
               >
                 <div class="bin__top">
                   <h3>{{ container.title }}</h3>
@@ -106,7 +133,10 @@ onMounted(containers.run)
                     :style="{ background: WASTE_TYPE_COLORS[container.wasteType] }"
                   />
                 </div>
-                <p class="text-muted bin__type">{{ WASTE_TYPE_LABELS[container.wasteType] }}</p>
+                <p class="text-muted bin__type">
+                  {{ WASTE_TYPE_LABELS[container.wasteType] }}
+                  <span v-if="isFull(container)"> · заполнен, сдача недоступна</span>
+                </p>
                 <FullnessBar :value="container.fullnessPercentage" />
               </li>
             </ul>
@@ -122,12 +152,22 @@ onMounted(containers.run)
 
             <label class="field">
               Насколько заполнился контейнер, %
-              <input v-model.number="form.addedFullnessPercentage" type="number" min="1" max="100" />
+              <input
+                v-model.number="form.addedFullnessPercentage"
+                type="number"
+                min="1"
+                max="100"
+              />
             </label>
 
             <p class="estimate">
               Примерно <span class="metric">+{{ estimatedCoins }}</span> EcoCoins
               <span class="text-muted">— точную сумму рассчитает сервер</span>
+            </p>
+
+            <p class="disclaimer">
+              Вес вводится вручную и не проверяется системой. Начисления за сдачу отходов носят
+              демонстрационный характер.
             </p>
 
             <p v-if="error" class="error">{{ error }}</p>
@@ -182,6 +222,11 @@ h2 {
   background: var(--c-moss-soft);
 }
 
+.bin--full {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .bin__top {
   display: flex;
   justify-content: space-between;
@@ -224,6 +269,12 @@ h3 {
   color: var(--c-coin);
   font-size: var(--text-sm);
   font-weight: 600;
+}
+
+.disclaimer {
+  font-size: var(--text-xs);
+  color: var(--c-ink-muted);
+  line-height: 1.5;
 }
 
 .error {

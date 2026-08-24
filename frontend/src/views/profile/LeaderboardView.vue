@@ -67,11 +67,7 @@ onMounted(board.run)
       <nav v-if="board.data.value.totalPages > 1" class="pager">
         <button type="button" :disabled="page === 0" @click="go(-1)">Назад</button>
         <span class="metric">{{ page + 1 }} / {{ board.data.value.totalPages }}</span>
-        <button
-          type="button"
-          :disabled="page + 1 >= board.data.value.totalPages"
-          @click="go(1)"
-        >
+        <button type="button" :disabled="page + 1 >= board.data.value.totalPages" @click="go(1)">
           Вперёд
         </button>
       </nav>

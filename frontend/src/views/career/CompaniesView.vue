@@ -32,7 +32,13 @@ onMounted(companies.run)
             <span v-if="company.isPartner" class="partner">Партнёр</span>
           </div>
           <p v-if="company.description" class="text-muted">{{ company.description }}</p>
-          <a v-if="company.website" :href="company.website" target="_blank" rel="noopener" class="link">
+          <a
+            v-if="company.website"
+            :href="company.website"
+            target="_blank"
+            rel="noopener"
+            class="link"
+          >
             Сайт компании
           </a>
         </li>

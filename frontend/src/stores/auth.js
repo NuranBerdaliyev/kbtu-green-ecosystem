@@ -4,11 +4,7 @@ import { authApi } from '@/api/auth'
 import { gamificationApi } from '@/api/gamification'
 import { tokenStorage } from '@/utils/tokenStorage'
 
-/**
- * There is no /auth/me endpoint. Identity (userId, email, role) comes from
- * AuthResponseDto and is cached in localStorage; the display name and the
- * EcoCoins / ESG / CO₂ figures come from GET /api/gamification/me.
- */
+
 export const useAuthStore = defineStore('auth', () => {
   const identity = ref(tokenStorage.getIdentity())
   const stats = ref(null)
@@ -16,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref(null)
   const fieldErrors = ref({})
 
-  const isAuthenticated = computed(() => Boolean(tokenStorage.getAccess() && identity.value))
+  const isAuthenticated = computed(() => Boolean(identity.value && tokenStorage.getAccess()))
   const role = computed(() => identity.value?.role ?? null)
   const userId = computed(() => identity.value?.userId ?? null)
   const fullName = computed(() => stats.value?.fullName ?? '')

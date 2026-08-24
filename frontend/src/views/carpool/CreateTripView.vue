@@ -107,7 +107,11 @@ async function submit() {
 
       <form class="card stack form" @submit.prevent="submit">
         <div class="points">
-          <button type="button" :class="{ active: picking === 'departure' }" @click="picking = 'departure'">
+          <button
+            type="button"
+            :class="{ active: picking === 'departure' }"
+            @click="picking = 'departure'"
+          >
             <span class="dot dot--from" />
             Отправление
             <em>{{ departure ? 'отмечено' : 'не выбрано' }}</em>
@@ -139,7 +143,9 @@ async function submit() {
         <label class="field">
           Всего мест
           <input v-model.number="form.totalSeats" type="number" min="1" max="8" />
-          <span v-if="fieldErrors.totalSeats" class="field__error">{{ fieldErrors.totalSeats }}</span>
+          <span v-if="fieldErrors.totalSeats" class="field__error">{{
+            fieldErrors.totalSeats
+          }}</span>
         </label>
 
         <p v-if="error" class="error">{{ error }}</p>
