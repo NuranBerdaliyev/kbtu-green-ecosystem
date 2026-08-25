@@ -53,7 +53,6 @@ KBTU Green Ecosystem — единая платформа для экологич
 ### 1.1 Основной системный поток
 
 ```mermaid
-flowchart TD
     A["Действие пользователя"] --> B["Предметный сервис"]
     B --> C["GamificationService"]
     C --> D["EcoTransaction"]
@@ -98,7 +97,6 @@ Boot-процесс, frontend — как отдельное SPA. Все моду
 данных и единый сервис геймификации.
 
 ```mermaid
-flowchart TD
     U["Браузер пользователя"] --> SPA["Vue 3 SPA"]
     SPA --> REST["REST API"]
     SPA --> STOMP["STOMP / SockJS"]
