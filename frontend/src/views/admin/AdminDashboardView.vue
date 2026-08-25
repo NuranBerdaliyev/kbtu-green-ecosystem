@@ -16,10 +16,25 @@ const alerts = ref([])
 const toggling = ref(null)
 const actionError = ref('')
 
-// Containers past 90% publish to /topic/admin/alerts.
-useEcoContainerSocket({
-  onAlert(message) {
-    alerts.value = [{ id: Date.now(), message }, ...alerts.value].slice(0, 5)
+/*
+ * Alerts fire when a container crosses 90% from below — not on every change
+ * above 90%. The payload is a string today and a JSON object in the newer
+ * backend, so both shapes are rendered.
+ */
+const { connected } = useEcoContainerSocket({
+  onAlert(payload) {
+    const entry =
+      typeof payload === 'string'
+        ? { id: Date.now(), text: payload }
+        : {
+            id: `${payload.containerId}-${payload.crossedAt}`,
+            text: `«${payload.title}» заполнен на ${payload.currentFullnessPercentage}%`,
+            detail:
+              payload.currentWeightGrams != null && payload.capacityGrams != null
+                ? `${payload.currentWeightGrams} / ${payload.capacityGrams} г`
+                : '',
+          }
+    alerts.value = [entry, ...alerts.value].slice(0, 5)
   },
 })
 
@@ -40,7 +55,7 @@ const sections = [
   { name: 'admin-containers', label: 'Контейнеры', text: 'Создание, правка, отметка о вывозе' },
   { name: 'admin-companies', label: 'Компании', text: 'Подтверждение партнёрства' },
   { name: 'admin-users', label: 'Пользователи', text: 'Назначение ролей' },
-  { name: 'admin-waste-logs', label: 'Журнал отходов', text: 'История сдачи' },
+  { name: 'admin-waste-logs', label: 'Сдача отходов', text: 'Проверка заявок студентов' },
 ]
 
 onMounted(() => {
@@ -69,10 +84,17 @@ const metrics = [
   <div class="stack">
     <PageHeader eyebrow="Администрирование" title="Панель управления" />
 
+    <p v-if="!connected" class="ws-state">
+      Нет соединения с сервером обновлений — заполненность может быть неактуальной.
+    </p>
+
     <div v-if="alerts.length" class="alerts">
-      <p class="eyebrow">Контейнеры заполнены</p>
+      <p class="eyebrow">Контейнеры требуют вывоза</p>
       <ul>
-        <li v-for="alert in alerts" :key="alert.id">{{ alert.message }}</li>
+        <li v-for="alert in alerts" :key="alert.id">
+          {{ alert.text }}
+          <span v-if="alert.detail" class="metric alerts__detail">{{ alert.detail }}</span>
+        </li>
       </ul>
     </div>
 
@@ -143,6 +165,14 @@ const metrics = [
 </template>
 
 <style scoped>
+.ws-state {
+  padding: var(--space-3);
+  background: var(--c-surface-sunk);
+  border-radius: var(--radius-sm);
+  color: var(--c-ink-muted);
+  font-size: var(--text-sm);
+}
+
 .alerts {
   padding: var(--space-4);
   background: var(--c-danger-soft);
@@ -159,6 +189,11 @@ const metrics = [
   margin-top: var(--space-2);
   padding-left: var(--space-4);
   font-size: var(--text-sm);
+}
+
+.alerts__detail {
+  margin-left: var(--space-2);
+  opacity: 0.8;
 }
 
 .sections {

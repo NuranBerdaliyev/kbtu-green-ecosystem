@@ -21,7 +21,7 @@ const liveUpdatedId = ref(null)
  * Every deposit broadcasts the updated container on /topic/eco-containers,
  * so the list reflects new fullness without a refresh.
  */
-useEcoContainerSocket({
+const { connected } = useEcoContainerSocket({
   onContainer(updated) {
     const list = containers.data.value ?? []
     const index = list.findIndex((c) => c.id === updated.id)
@@ -74,6 +74,11 @@ onMounted(containers.run)
       </template>
     </PageHeader>
 
+    <p v-if="!connected" class="ws-state">
+      Обновления в реальном времени недоступны. Обновите страницу, чтобы увидеть актуальную
+      заполненность.
+    </p>
+
     <div class="filters">
       <button :class="{ active: typeFilter === 'ALL' }" type="button" @click="typeFilter = 'ALL'">
         Все
@@ -122,7 +127,12 @@ onMounted(containers.run)
                 :style="{ background: WASTE_TYPE_COLORS[container.wasteType] }"
               />
             </div>
-            <p class="text-muted bin__type">{{ WASTE_TYPE_LABELS[container.wasteType] }}</p>
+            <p class="text-muted bin__type">
+              {{ WASTE_TYPE_LABELS[container.wasteType] }}
+              <span v-if="container.capacityGrams" class="metric">
+                · {{ container.currentWeightGrams }} / {{ container.capacityGrams }} г
+              </span>
+            </p>
             <FullnessBar :value="container.fullnessPercentage" />
           </li>
         </ul>
@@ -143,6 +153,14 @@ onMounted(containers.run)
   .layout {
     grid-template-columns: 1fr;
   }
+}
+
+.ws-state {
+  padding: var(--space-3);
+  background: var(--c-surface-sunk);
+  border-radius: var(--radius-sm);
+  color: var(--c-ink-muted);
+  font-size: var(--text-sm);
 }
 
 .filters {

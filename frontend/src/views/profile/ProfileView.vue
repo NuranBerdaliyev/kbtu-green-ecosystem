@@ -134,7 +134,7 @@ onMounted(() => {
           :error="history.error.value ?? ''"
           :empty="(history.data.value?.content ?? []).length === 0"
           empty-title="Активности пока нет"
-          empty-text="Присоединитесь к поездке или сдайте отходы."
+          empty-text="Присоединитесь к поездке или сдайте отходы. Начисление за отходы появится после проверки администратором."
           @retry="history.run"
         >
           <ul class="list">

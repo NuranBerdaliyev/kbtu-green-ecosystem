@@ -41,16 +41,19 @@ export const WASTE_TYPE_COLORS = {
   GLASS: '#3A6B7E',
 }
 
+/** CREATED -> PUBLISHED -> IN_PROGRESS -> COMPLETED, CANCELLED from either. */
 export const TRIP_STATUS = {
   CREATED: 'CREATED',
-  ACTIVE: 'ACTIVE',
+  PUBLISHED: 'PUBLISHED',
+  IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 }
 
 export const TRIP_STATUS_LABELS = {
-  CREATED: 'Создана',
-  ACTIVE: 'В пути',
+  CREATED: 'Черновик',
+  PUBLISHED: 'Опубликована',
+  IN_PROGRESS: 'В пути',
   COMPLETED: 'Завершена',
   CANCELLED: 'Отменена',
 }
@@ -84,6 +87,9 @@ export const ECO_SOURCE_LABELS = {
   TRIP_COMPLETED: 'Совместная поездка',
   WASTE_DEPOSIT: 'Сдача отходов',
   ADMIN_ADJUSTMENT: 'Корректировка администратора',
+  CARPOOL_FARE_RESERVED: 'Оплата поездки',
+  CARPOOL_FARE_REFUND: 'Возврат оплаты',
+  CARPOOL_FARE_EARNING: 'Доход водителя',
 }
 
 /** AchievementCode — titles come from the backend, this is only for icons. */
@@ -127,3 +133,32 @@ export const GRAMS_PER_COIN = 100
 
 /** Deposits into a container at 100% are rejected. */
 export const FULLNESS_MAX = 100
+
+/** TripPaymentStatus — the passenger's fare state on a trip. */
+export const TRIP_PAYMENT_LABELS = {
+  RESERVED: 'Зарезервировано',
+  REFUNDED: 'Возвращено',
+  SETTLED: 'Оплачено',
+}
+
+/** WasteDepositStatus — deposits are moderated before any reward is granted. */
+export const DEPOSIT_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+}
+
+export const DEPOSIT_STATUS_LABELS = {
+  PENDING: 'На проверке',
+  APPROVED: 'Подтверждена',
+  REJECTED: 'Отклонена',
+}
+
+/** Backend limits from GamificationProperties.Waste. */
+export const MAX_DEPOSIT_GRAMS = 5000
+export const MAX_DAILY_APPROVED_GRAMS = 20000
+
+/** TripRequestDto: @Min(1) @Max(100_000) on priceEcoCoins, @Max(8) on seats. */
+export const TRIP_PRICE_MIN = 1
+export const TRIP_PRICE_MAX = 100000
+export const TRIP_SEATS_MAX = 8

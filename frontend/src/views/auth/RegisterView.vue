@@ -26,7 +26,7 @@ async function submit() {
   if (!passwordValid.value) return
   // Register returns tokens, so the user is signed in straight away.
   const ok = await auth.register({ ...form })
-  if (ok) router.push({ name: 'home' })
+  if (ok) router.replace({ name: 'home' })
 }
 </script>
 
