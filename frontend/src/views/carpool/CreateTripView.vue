@@ -4,12 +4,14 @@ import { useRouter } from 'vue-router'
 import { tripsApi } from '@/api/trips'
 import { toWkt, haversineKm } from '@/utils/geo'
 import { toDateTimeLocal, toLocalDateTime } from '@/utils/format'
-import { CAMPUS_CENTER } from '@/utils/constants'
+import { CAMPUS_CENTER, TRIP_PRICE_MIN, TRIP_PRICE_MAX, TRIP_SEATS_MAX } from '@/utils/constants'
+import { useAuthStore } from '@/stores/auth'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import LeafletMap from '@/components/map/LeafletMap.vue'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const picking = ref('departure') // departure | destination
 const departure = ref(null)
@@ -22,6 +24,9 @@ tomorrow.setHours(8, 30, 0, 0)
 const form = reactive({
   departureTime: toDateTimeLocal(tomorrow),
   totalSeats: 3,
+  // Passengers pay this from their balance when they join; the driver
+  // receives the total once the trip is completed.
+  priceEcoCoins: 5,
 })
 
 const submitting = ref(false)
@@ -50,7 +55,12 @@ const distanceKm = computed(() =>
 )
 
 const isFuture = computed(() => new Date(form.departureTime) > new Date())
-const canSubmit = computed(() => departure.value && destination.value && isFuture.value)
+const priceValid = computed(
+  () => form.priceEcoCoins >= TRIP_PRICE_MIN && form.priceEcoCoins <= TRIP_PRICE_MAX,
+)
+const canSubmit = computed(
+  () => departure.value && destination.value && isFuture.value && priceValid.value,
+)
 
 function onPick(point) {
   if (picking.value === 'departure') {
@@ -74,6 +84,7 @@ async function submit() {
       destinationLocationWkt: toWkt(destination.value),
       departureTime: toLocalDateTime(form.departureTime),
       totalSeats: form.totalSeats,
+      priceEcoCoins: form.priceEcoCoins,
     })
     router.push({ name: 'trip-details', params: { id: trip.id } })
   } catch (e) {
@@ -142,11 +153,34 @@ async function submit() {
 
         <label class="field">
           Всего мест
-          <input v-model.number="form.totalSeats" type="number" min="1" max="8" />
+          <input v-model.number="form.totalSeats" type="number" min="1" :max="TRIP_SEATS_MAX" />
           <span v-if="fieldErrors.totalSeats" class="field__error">{{
             fieldErrors.totalSeats
           }}</span>
         </label>
+
+        <label class="field">
+          Цена с пассажира, EcoCoins
+          <input
+            v-model.number="form.priceEcoCoins"
+            type="number"
+            :min="TRIP_PRICE_MIN"
+            :max="TRIP_PRICE_MAX"
+          />
+          <span v-if="fieldErrors.priceEcoCoins" class="field__error">
+            {{ fieldErrors.priceEcoCoins }}
+          </span>
+          <span v-else-if="!priceValid" class="field__error">
+            От {{ TRIP_PRICE_MIN }} до {{ TRIP_PRICE_MAX }} EcoCoins
+          </span>
+        </label>
+
+        <p class="text-muted note">
+          Пассажир платит {{ form.priceEcoCoins }} EcoCoins при присоединении. Вы получите
+          <span class="metric">{{ form.priceEcoCoins * (form.totalSeats || 0) }}</span> EcoCoins,
+          если займут все места. Ваш баланс:
+          <span class="metric">{{ auth.stats?.ecoCoinsBalance ?? 0 }}</span>
+        </p>
 
         <p v-if="error" class="error">{{ error }}</p>
 
@@ -239,6 +273,11 @@ async function submit() {
 
 .field__error {
   color: var(--c-danger);
+}
+
+.note {
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .error {

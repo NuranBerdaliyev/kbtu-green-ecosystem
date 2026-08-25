@@ -1,29 +1,33 @@
 <script setup>
 import { computed } from 'vue'
-import { TRIP_STATUS_LABELS, JOB_STATUS_LABELS } from '@/utils/constants'
+import { TRIP_STATUS_LABELS, JOB_STATUS_LABELS, DEPOSIT_STATUS_LABELS } from '@/utils/constants'
 
 const props = defineProps({
   status: { type: String, required: true },
-  kind: { type: String, default: 'trip' }, // trip | job
+  kind: { type: String, default: 'trip' }, // trip | job | deposit
 })
 
-const label = computed(() =>
-  props.kind === 'job'
-    ? (JOB_STATUS_LABELS[props.status] ?? props.status)
-    : (TRIP_STATUS_LABELS[props.status] ?? props.status),
-)
+const LABELS = {
+  trip: TRIP_STATUS_LABELS,
+  job: JOB_STATUS_LABELS,
+  deposit: DEPOSIT_STATUS_LABELS,
+}
+
+const label = computed(() => LABELS[props.kind]?.[props.status] ?? props.status)
 
 const tone = computed(
   () =>
     ({
       CREATED: 'neutral',
-      ACTIVE: 'go',
+      PUBLISHED: 'go',
+      IN_PROGRESS: 'go',
       COMPLETED: 'done',
       CANCELLED: 'stop',
       PENDING: 'neutral',
       REVIEWED: 'go',
       ACCEPTED: 'done',
       REJECTED: 'stop',
+      APPROVED: 'done',
     })[props.status] ?? 'neutral',
 )
 </script>

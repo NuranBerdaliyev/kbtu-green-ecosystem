@@ -13,7 +13,11 @@ const form = reactive({ email: '', password: '' })
 
 async function submit() {
   const ok = await auth.login({ ...form })
-  if (ok) router.push(route.query.redirect ?? { name: 'home' })
+  if (!ok) return
+  // Only accept in-app paths as a redirect target, never an absolute URL.
+  const target = route.query.redirect
+  const safe = typeof target === 'string' && target.startsWith('/') ? target : { name: 'home' }
+  router.replace(safe)
 }
 </script>
 

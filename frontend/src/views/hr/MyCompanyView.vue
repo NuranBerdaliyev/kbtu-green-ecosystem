@@ -71,8 +71,12 @@ async function save() {
   }
 }
 
+/**
+ * CompanyService refuses to delete a company that still has vacancies, so the
+ * old warning ("its vacancies will disappear") was wrong in both directions.
+ */
 async function remove(company) {
-  if (!window.confirm(`Удалить «${company.name}»? Вакансии компании тоже исчезнут.`)) return
+  if (!window.confirm(`Удалить «${company.name}»?`)) return
   try {
     await companiesApi.remove(company.id)
     await companies.run()
@@ -140,6 +144,9 @@ onMounted(companies.run)
             <p v-if="company.description" class="text-muted">{{ company.description }}</p>
             <p v-if="!company.isPartner" class="text-muted hint">
               Статус партнёра назначает администратор. До этого вакансии не публикуются.
+            </p>
+            <p class="text-muted hint">
+              Удалить компанию можно только после удаления всех её вакансий.
             </p>
           </div>
           <div class="row">

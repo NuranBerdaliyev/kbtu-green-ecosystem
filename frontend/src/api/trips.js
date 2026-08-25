@@ -3,6 +3,10 @@ import http from './http'
 /**
  * TripController + TripParticipantController — /api/carpool/trips
  * The driver comes from the JWT, so create() does not send driverId.
+ *
+ * Lifecycle: CREATED -publish-> PUBLISHED -start-> IN_PROGRESS -complete->
+ * COMPLETED. Passengers may join/leave only while PUBLISHED; joining reserves
+ * the fare from their balance and leaving refunds it.
  */
 export const tripsApi = {
   search: (params) => http.get('/carpool/trips/search', { params }).then((r) => r.data),
@@ -14,7 +18,8 @@ export const tripsApi = {
   update: (tripId, payload) => http.put(`/carpool/trips/${tripId}`, payload).then((r) => r.data),
   remove: (tripId) => http.delete(`/carpool/trips/${tripId}`),
 
-  activate: (tripId) => http.post(`/carpool/trips/${tripId}/activate`).then((r) => r.data),
+  publish: (tripId) => http.post(`/carpool/trips/${tripId}/publish`).then((r) => r.data),
+  start: (tripId) => http.post(`/carpool/trips/${tripId}/start`).then((r) => r.data),
   complete: (tripId) => http.post(`/carpool/trips/${tripId}/complete`).then((r) => r.data),
   cancel: (tripId) => http.post(`/carpool/trips/${tripId}/cancel`).then((r) => r.data),
 

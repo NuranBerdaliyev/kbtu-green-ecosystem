@@ -157,9 +157,17 @@ onMounted(() => {
             <p class="text-muted">{{ vacancy.companyName }}</p>
           </div>
           <div class="row">
-            <RouterLink :to="{ name: 'vacancy-details', params: { id: vacancy.id } }">
+            <!--
+              GET /career/vacancies/{id} only resolves active vacancies from
+              partner companies, so this link would 404 for a withdrawn one.
+            -->
+            <RouterLink
+              v-if="vacancy.isActive"
+              :to="{ name: 'vacancy-details', params: { id: vacancy.id } }"
+            >
               <BaseButton variant="ghost">Кандидаты</BaseButton>
             </RouterLink>
+            <span v-else class="text-muted withdrawn">Снята — кандидаты недоступны</span>
             <BaseButton variant="ghost" @click="openEdit(vacancy)">Изменить</BaseButton>
             <BaseButton variant="danger" @click="remove(vacancy)">Удалить</BaseButton>
           </div>
@@ -236,6 +244,11 @@ h3 {
 .status--off {
   background: var(--c-surface-sunk);
   color: var(--c-ink-muted);
+}
+
+.withdrawn {
+  font-size: var(--text-sm);
+  align-self: center;
 }
 
 .field {

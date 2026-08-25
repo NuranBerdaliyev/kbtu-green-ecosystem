@@ -35,6 +35,10 @@ const distanceKm = computed(() => {
         <dt>Расстояние</dt>
         <dd class="metric">≈ {{ distanceKm.toFixed(1) }} км</dd>
       </div>
+      <div>
+        <dt>Цена</dt>
+        <dd class="metric trip__price">{{ trip.priceEcoCoins }} EC</dd>
+      </div>
     </dl>
   </RouterLink>
 </template>
@@ -85,5 +89,10 @@ dt {
 
 dd {
   font-size: var(--text-sm);
+}
+
+.trip__price {
+  color: var(--c-coin);
+  font-weight: 600;
 }
 </style>

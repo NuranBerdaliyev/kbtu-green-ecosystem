@@ -5,6 +5,7 @@ import { useAsync } from '@/composables/useAsync'
 import { useEcoContainerSocket } from '@/composables/useEcoContainerSocket'
 import { parseWkt, toWkt } from '@/utils/geo'
 import { WASTE_TYPES, WASTE_TYPE_LABELS, WASTE_TYPE_COLORS, CAMPUS_CENTER } from '@/utils/constants'
+import { formatNumber } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
 import FullnessBar from '@/components/common/FullnessBar.vue'
@@ -20,10 +21,15 @@ const saving = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
 
+/*
+ * capacityGrams replaced fullnessPercentage in the request DTO: fullness is
+ * now derived by the backend from currentWeightGrams / capacityGrams and must
+ * never be set by the client.
+ */
 const form = reactive({
   title: '',
   wasteType: WASTE_TYPES.PLASTIC,
-  fullnessPercentage: 0,
+  capacityGrams: 1000,
   isActive: true,
   qrCodeToken: '',
   point: { ...CAMPUS_CENTER },
@@ -54,7 +60,7 @@ function openCreate() {
   Object.assign(form, {
     title: '',
     wasteType: WASTE_TYPES.PLASTIC,
-    fullnessPercentage: 0,
+    capacityGrams: 1000,
     isActive: true,
     qrCodeToken: '',
     point: { ...CAMPUS_CENTER },
@@ -69,7 +75,7 @@ function openEdit(container) {
   Object.assign(form, {
     title: container.title,
     wasteType: container.wasteType,
-    fullnessPercentage: container.fullnessPercentage,
+    capacityGrams: container.capacityGrams ?? 1000,
     isActive: container.isActive,
     qrCodeToken: container.qrCodeToken,
     point: parseWkt(container.locationWkt) ?? { ...CAMPUS_CENTER },
@@ -78,7 +84,17 @@ function openEdit(container) {
   editingId.value = container.id
   error.value = ''
   fieldErrors.value = {}
+  editingContainer.value = container
 }
+
+/** Kept so the form can enforce the backend's edit restrictions. */
+const editingContainer = ref(null)
+
+/** Capacity cannot drop below the weight already inside. */
+const minCapacity = computed(() => editingContainer.value?.currentWeightGrams ?? 1)
+
+/** Waste type is locked until the container is emptied. */
+const wasteTypeLocked = computed(() => (editingContainer.value?.currentWeightGrams ?? 0) > 0)
 
 function close() {
   creating.value = false
@@ -94,7 +110,7 @@ async function save() {
       title: form.title,
       locationWkt: toWkt(form.point),
       wasteType: form.wasteType,
-      fullnessPercentage: form.fullnessPercentage,
+      capacityGrams: form.capacityGrams,
       isActive: form.isActive,
       qrCodeToken: form.qrCodeToken,
     }
@@ -110,27 +126,19 @@ async function save() {
   }
 }
 
-/**
- * There is no dedicated "emptied" endpoint, so clearing a container is an
- * update with fullness set back to 0.
- */
+/** Dedicated endpoint: resets weight and fullness and broadcasts the change. */
 async function empty(container) {
   if (!window.confirm(`Отметить «${container.title}» как вывезенный?`)) return
+  error.value = ''
   try {
-    await containersAdminApi.update(container.id, {
-      title: container.title,
-      locationWkt: container.locationWkt,
-      wasteType: container.wasteType,
-      fullnessPercentage: 0,
-      isActive: container.isActive,
-      qrCodeToken: container.qrCodeToken,
-    })
+    await containersAdminApi.empty(container.id)
     await containers.run()
   } catch (e) {
     error.value = e.message
   }
 }
 
+/** A container with deposit history cannot be deleted — deactivate instead. */
 async function remove(container) {
   if (!window.confirm(`Удалить «${container.title}»?`)) return
   try {
@@ -141,7 +149,9 @@ async function remove(container) {
   }
 }
 
-const canSave = computed(() => form.title.trim() && form.qrCodeToken.trim())
+const canSave = computed(
+  () => form.title.trim() && form.qrCodeToken.trim() && form.capacityGrams >= minCapacity.value,
+)
 
 onMounted(containers.run)
 </script>
@@ -178,16 +188,25 @@ onMounted(containers.run)
 
         <label class="field">
           Тип отходов
-          <select v-model="form.wasteType">
+          <select v-model="form.wasteType" :disabled="wasteTypeLocked">
             <option v-for="type in Object.values(WASTE_TYPES)" :key="type" :value="type">
               {{ WASTE_TYPE_LABELS[type] }}
             </option>
           </select>
+          <span v-if="wasteTypeLocked" class="text-muted field__hint">
+            Тип нельзя изменить, пока контейнер не вывезен.
+          </span>
         </label>
 
         <label class="field">
-          Заполненность, %
-          <input v-model.number="form.fullnessPercentage" type="number" min="0" max="100" />
+          Вместимость, граммы
+          <input v-model.number="form.capacityGrams" type="number" :min="minCapacity" />
+          <span v-if="fieldErrors.capacityGrams" class="field__error">
+            {{ fieldErrors.capacityGrams }}
+          </span>
+          <span v-else-if="form.capacityGrams < minCapacity" class="field__error">
+            Не меньше текущего веса — {{ minCapacity }} г
+          </span>
         </label>
 
         <label class="check">
@@ -218,11 +237,14 @@ onMounted(containers.run)
             </div>
             <p class="text-muted bin__meta">
               {{ WASTE_TYPE_LABELS[c.wasteType] }} · {{ c.isActive ? 'активен' : 'отключён' }}
+              <span v-if="c.capacityGrams" class="metric">
+                · {{ formatNumber(c.currentWeightGrams) }} / {{ formatNumber(c.capacityGrams) }} г
+              </span>
             </p>
             <FullnessBar :value="c.fullnessPercentage" />
             <div class="row bin__actions">
               <BaseButton variant="ghost" @click="openEdit(c)">Изменить</BaseButton>
-              <BaseButton v-if="c.fullnessPercentage > 0" variant="ghost" @click="empty(c)">
+              <BaseButton v-if="c.currentWeightGrams > 0" variant="ghost" @click="empty(c)">
                 Вывезен
               </BaseButton>
               <BaseButton variant="danger" @click="remove(c)">Удалить</BaseButton>
@@ -322,6 +344,15 @@ h3 {
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--c-ink-soft);
+}
+
+.field__error {
+  color: var(--c-danger);
+  font-size: var(--text-sm);
+}
+
+.field__hint {
+  font-size: var(--text-xs);
 }
 
 .error {

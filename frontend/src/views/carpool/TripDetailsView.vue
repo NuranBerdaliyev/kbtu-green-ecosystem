@@ -5,8 +5,8 @@ import { tripsApi } from '@/api/trips'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/composables/useAsync'
 import { parseWkt, haversineKm } from '@/utils/geo'
-import { formatDate, formatDateTime } from '@/utils/format'
-import { TRIP_STATUS } from '@/utils/constants'
+import { formatDate, formatDateTime, formatNumber } from '@/utils/format'
+import { TRIP_STATUS, TRIP_PAYMENT_LABELS } from '@/utils/constants'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -24,17 +24,51 @@ const participants = useAsync(() => tripsApi.participants(tripId), [])
 const acting = ref('')
 const actionError = ref('')
 
+const status = computed(() => trip.data.value?.tripStatus)
 const isDriver = computed(() => trip.data.value?.driverId === auth.userId)
-const hasJoined = computed(() =>
-  (participants.data.value ?? []).some((p) => p.passengerId === auth.userId),
+const price = computed(() => trip.data.value?.priceEcoCoins ?? 0)
+
+/** Cancelled participations stay in the list, so filter them out. */
+const activeParticipants = computed(() =>
+  (participants.data.value ?? []).filter((p) => !p.isCancelled),
 )
+const myParticipation = computed(() =>
+  activeParticipants.value.find((p) => p.passengerId === auth.userId),
+)
+const hasPassengers = computed(() => activeParticipants.value.length > 0)
+
+const departed = computed(
+  () => trip.data.value && new Date(trip.data.value.departureTime) <= new Date(),
+)
+
+const balance = computed(() => auth.stats?.ecoCoinsBalance ?? 0)
+const canAfford = computed(() => balance.value >= price.value)
+
+/*
+ * TripParticipantService rules: only PUBLISHED trips can be joined, not after
+ * the departure time, not by the driver, and the fare is reserved on join.
+ */
 const canJoin = computed(
   () =>
-    trip.data.value &&
+    status.value === TRIP_STATUS.PUBLISHED &&
     !isDriver.value &&
-    !hasJoined.value &&
-    trip.data.value.availableSeats > 0 &&
-    [TRIP_STATUS.CREATED, TRIP_STATUS.ACTIVE].includes(trip.data.value.tripStatus),
+    !myParticipation.value &&
+    !departed.value &&
+    trip.data.value?.availableSeats > 0,
+)
+
+/** Leaving is only allowed while PUBLISHED; the fare is refunded. */
+const canLeave = computed(
+  () => status.value === TRIP_STATUS.PUBLISHED && !isDriver.value && Boolean(myParticipation.value),
+)
+
+/** Starting requires the departure time to have passed and at least one passenger. */
+const canStart = computed(
+  () =>
+    isDriver.value &&
+    status.value === TRIP_STATUS.PUBLISHED &&
+    departed.value &&
+    hasPassengers.value,
 )
 
 const points = computed(() => {
@@ -57,30 +91,24 @@ async function reload() {
 }
 
 /**
- * Every action returns the updated trip, so we refresh both lists after.
- * Completing a trip awards EcoCoins, so the header figures are refreshed too.
+ * join, leave, complete and cancel all move EcoCoins, so the header balance
+ * is refreshed after them.
  */
+const MONEY_ACTIONS = ['join', 'leave', 'complete', 'cancel']
+
 async function act(name, fn) {
   acting.value = name
   actionError.value = ''
   try {
     await fn()
     await reload()
-    if (name === 'complete' || name === 'join' || name === 'leave') await auth.loadStats()
+    if (MONEY_ACTIONS.includes(name)) await auth.loadStats()
   } catch (e) {
     actionError.value = e.message
   } finally {
     acting.value = ''
   }
 }
-
-/** The backend refuses completion until the departure time has passed. */
-const departed = computed(
-  () => trip.data.value && new Date(trip.data.value.departureTime) <= new Date(),
-)
-
-/** Solo trips earn nothing — warn the driver before they finish. */
-const hasPassengers = computed(() => (participants.data.value ?? []).length > 0)
 
 async function removeTrip() {
   if (!window.confirm('Удалить поездку? Действие необратимо.')) return
@@ -124,6 +152,10 @@ onMounted(reload)
             <div class="card stack">
               <dl class="facts">
                 <div>
+                  <dt>Цена с пассажира</dt>
+                  <dd class="metric price">{{ formatNumber(price) }} EC</dd>
+                </div>
+                <div>
                   <dt>Свободные места</dt>
                   <dd class="metric">
                     {{ trip.data.value.availableSeats }} из {{ trip.data.value.totalSeats }}
@@ -141,91 +173,130 @@ onMounted(reload)
 
               <p v-if="actionError" class="error">{{ actionError }}</p>
 
-              <BaseButton
-                v-if="canJoin"
-                :loading="acting === 'join'"
-                @click="act('join', () => tripsApi.join(tripId))"
-              >
-                Присоединиться
-              </BaseButton>
-
-              <BaseButton
-                v-else-if="hasJoined && !isDriver"
-                variant="ghost"
-                :loading="acting === 'leave'"
-                @click="act('leave', () => tripsApi.leave(tripId))"
-              >
-                Отменить участие
-              </BaseButton>
-
-              <template v-if="isDriver">
+              <!-- Passenger actions -->
+              <template v-if="!isDriver">
                 <BaseButton
-                  v-if="trip.data.value.tripStatus === 'CREATED'"
-                  :loading="acting === 'activate'"
-                  @click="act('activate', () => tripsApi.activate(tripId))"
+                  v-if="canJoin"
+                  :disabled="!canAfford"
+                  :loading="acting === 'join'"
+                  @click="act('join', () => tripsApi.join(tripId))"
                 >
-                  Опубликовать в поиске
+                  Присоединиться за {{ formatNumber(price) }} EC
                 </BaseButton>
+                <p v-if="canJoin && !canAfford" class="warn">
+                  Недостаточно EcoCoins: нужно {{ formatNumber(price) }}, у вас
+                  {{ formatNumber(balance) }}.
+                </p>
+
                 <BaseButton
-                  v-if="trip.data.value.tripStatus === 'ACTIVE'"
-                  :loading="acting === 'complete'"
-                  :disabled="!departed"
-                  @click="act('complete', () => tripsApi.complete(tripId))"
+                  v-if="canLeave"
+                  variant="ghost"
+                  :loading="acting === 'leave'"
+                  @click="act('leave', () => tripsApi.leave(tripId))"
                 >
-                  Завершить поездку
+                  Отменить участие и вернуть {{ formatNumber(price) }} EC
                 </BaseButton>
+
+                <p v-if="myParticipation" class="text-muted note">
+                  Оплата: {{ TRIP_PAYMENT_LABELS[myParticipation.paymentStatus] }} —
+                  <span class="metric"
+                    >{{ formatNumber(myParticipation.reservedEcoCoins) }} EC</span
+                  >
+                </p>
+                <p v-else-if="status === TRIP_STATUS.PUBLISHED && departed" class="text-muted note">
+                  Присоединиться нельзя: время выезда уже прошло.
+                </p>
                 <p
-                  v-if="trip.data.value.tripStatus === 'ACTIVE' && !departed"
+                  v-else-if="
+                    status === TRIP_STATUS.PUBLISHED && trip.data.value.availableSeats === 0
+                  "
                   class="text-muted note"
                 >
-                  Завершить можно после времени выезда.
+                  Свободных мест не осталось.
                 </p>
-                <p
-                  v-else-if="trip.data.value.tripStatus === 'ACTIVE' && !hasPassengers"
-                  class="warn"
-                >
-                  В поездке нет пассажиров — это не совместная поездка.
+                <p v-else-if="status === TRIP_STATUS.CREATED" class="text-muted note">
+                  Поездка ещё не опубликована водителем.
                 </p>
+              </template>
+
+              <!-- Driver actions, one row per lifecycle stage -->
+              <template v-else>
                 <BaseButton
-                  v-if="['CREATED', 'ACTIVE'].includes(trip.data.value.tripStatus)"
+                  v-if="status === TRIP_STATUS.CREATED"
+                  :loading="acting === 'publish'"
+                  @click="act('publish', () => tripsApi.publish(tripId))"
+                >
+                  Опубликовать
+                </BaseButton>
+
+                <BaseButton
+                  v-if="status === TRIP_STATUS.PUBLISHED"
+                  :disabled="!canStart"
+                  :loading="acting === 'start'"
+                  @click="act('start', () => tripsApi.start(tripId))"
+                >
+                  Начать поездку
+                </BaseButton>
+                <p v-if="status === TRIP_STATUS.PUBLISHED && !departed" class="text-muted note">
+                  Начать можно после времени выезда.
+                </p>
+                <p v-else-if="status === TRIP_STATUS.PUBLISHED && !hasPassengers" class="warn">
+                  Нужен хотя бы один пассажир — без них поездку нельзя начать.
+                </p>
+
+                <BaseButton
+                  v-if="status === TRIP_STATUS.IN_PROGRESS"
+                  :loading="acting === 'complete'"
+                  @click="act('complete', () => tripsApi.complete(tripId))"
+                >
+                  Завершить и получить {{ formatNumber(price * activeParticipants.length) }} EC
+                </BaseButton>
+
+                <BaseButton
+                  v-if="
+                    [TRIP_STATUS.CREATED, TRIP_STATUS.PUBLISHED, TRIP_STATUS.IN_PROGRESS].includes(
+                      status,
+                    )
+                  "
                   variant="ghost"
                   :loading="acting === 'cancel'"
                   @click="act('cancel', () => tripsApi.cancel(tripId))"
                 >
                   Отменить поездку
                 </BaseButton>
+
                 <BaseButton
-                  v-if="trip.data.value.tripStatus === 'CREATED'"
+                  v-if="status === TRIP_STATUS.CREATED"
                   variant="danger"
                   :loading="acting === 'delete'"
                   @click="removeTrip"
                 >
                   Удалить
                 </BaseButton>
-              </template>
 
-              <p v-if="isDriver && trip.data.value.tripStatus === 'ACTIVE'" class="text-muted note">
-                EcoCoins начисляются всем участникам после завершения поездки.
-              </p>
-              <p
-                v-if="!isDriver && !canJoin && !hasJoined && trip.data.value.availableSeats === 0"
-                class="text-muted note"
-              >
-                Свободных мест не осталось.
-              </p>
+                <p v-if="status === TRIP_STATUS.IN_PROGRESS" class="text-muted note">
+                  После завершения вы получите оплату пассажиров, а ESG и CO₂ начислятся всем
+                  участникам.
+                </p>
+                <p v-if="status === TRIP_STATUS.CANCELLED" class="text-muted note">
+                  Поездка отменена, оплата пассажирам возвращена.
+                </p>
+              </template>
             </div>
 
             <div class="card stack">
               <h3>Пассажиры</h3>
-              <p v-if="(participants.data.value ?? []).length === 0" class="text-muted">
+              <p v-if="activeParticipants.length === 0" class="text-muted">
                 Пока никто не присоединился.
               </p>
               <ul v-else class="passengers">
-                <li v-for="p in participants.data.value" :key="p.id">
-                  <span>{{
-                    p.passengerId === auth.userId ? 'Вы' : `Пользователь #${p.passengerId}`
-                  }}</span>
-                  <span class="text-muted">{{ formatDateTime(p.joinedAt) }}</span>
+                <li v-for="p in activeParticipants" :key="p.id">
+                  <span>
+                    {{ p.passengerId === auth.userId ? 'Вы' : `Пользователь #${p.passengerId}` }}
+                  </span>
+                  <span class="text-muted">
+                    {{ TRIP_PAYMENT_LABELS[p.paymentStatus] ?? formatDateTime(p.joinedAt) }}
+                  </span>
                 </li>
               </ul>
             </div>
@@ -276,6 +347,10 @@ dd {
   font-weight: 600;
 }
 
+.price {
+  color: var(--c-coin);
+}
+
 .passengers {
   list-style: none;
   padding: 0;
@@ -295,6 +370,7 @@ dd {
 
 .note {
   font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .warn {

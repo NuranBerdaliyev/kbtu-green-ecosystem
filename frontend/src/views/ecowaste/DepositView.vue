@@ -2,21 +2,21 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ecoPointsApi } from '@/api/ecoWaste'
-import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/composables/useAsync'
 import {
   WASTE_TYPE_LABELS,
   WASTE_TYPE_COLORS,
   GRAMS_PER_COIN,
   FULLNESS_MAX,
+  MAX_DEPOSIT_GRAMS,
 } from '@/utils/constants'
 import { formatNumber } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
 import FullnessBar from '@/components/common/FullnessBar.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 
-const auth = useAuthStore()
 const containers = useAsync(ecoPointsApi.activeContainers, [])
 
 const selected = ref(null)
@@ -24,26 +24,36 @@ const submitting = ref(false)
 const error = ref('')
 const result = ref(null)
 
-// Matches WasteDepositRequestDto.
+// Matches WasteDepositRequestDto — the backend no longer accepts a fullness
+// delta; it derives it from the weight and the container capacity on approval.
 const form = reactive({
   wasteWeightGrams: 500,
-  addedFullnessPercentage: 5,
 })
 
 /** A container at 100% rejects deposits, so it cannot be chosen. */
 const isFull = (container) => container.fullnessPercentage >= FULLNESS_MAX
 
-const canSubmit = computed(
-  () =>
-    selected.value &&
-    !isFull(selected.value) &&
-    form.wasteWeightGrams >= 1 &&
-    form.addedFullnessPercentage >= 1,
-)
+/** Free capacity in grams — the backend rejects anything larger. */
+const freeCapacity = computed(() => {
+  const c = selected.value
+  if (!c || c.capacityGrams == null) return null
+  return Math.max(0, c.capacityGrams - (c.currentWeightGrams ?? 0))
+})
+
+const weightError = computed(() => {
+  if (form.wasteWeightGrams < 1) return 'Укажите вес'
+  if (form.wasteWeightGrams > MAX_DEPOSIT_GRAMS)
+    return `Не более ${MAX_DEPOSIT_GRAMS} г за одну сдачу`
+  if (freeCapacity.value != null && form.wasteWeightGrams > freeCapacity.value)
+    return `В контейнере свободно ${freeCapacity.value} г`
+  return ''
+})
+
+const canSubmit = computed(() => selected.value && !isFull(selected.value) && !weightError.value)
 
 /**
- * The backend awards 1 coin per 100 g but never less than 1 per deposit,
- * so the preview floors at 1 rather than showing 0 for small amounts.
+ * Shown as a potential reward only. Nothing is granted until an admin
+ * approves the deposit, so this must not read as a confirmed balance change.
  */
 const estimatedCoins = computed(() =>
   Math.max(1, Math.floor(form.wasteWeightGrams / GRAMS_PER_COIN)),
@@ -59,12 +69,11 @@ async function submit() {
   submitting.value = true
   error.value = ''
   try {
+    // Returns a WasteLogResponseDto with status PENDING and no reward yet.
     result.value = await ecoPointsApi.deposit({
       qrCodeToken: selected.value.qrCodeToken,
       wasteWeightGrams: form.wasteWeightGrams,
-      addedFullnessPercentage: form.addedFullnessPercentage,
     })
-    await auth.loadStats()
   } catch (e) {
     error.value = e.message
   } finally {
@@ -85,10 +94,22 @@ onMounted(containers.run)
   <div class="stack">
     <PageHeader eyebrow="Eco Waste" title="Сдать отходы" />
 
-    <section v-if="result" class="card success stack">
-      <p class="eyebrow">Принято</p>
-      <p class="metric success__coins">+{{ formatNumber(result.ecoCoinsEarned) }} EcoCoins</p>
-      <p class="text-muted">Запись сохранена в истории активности.</p>
+    <section v-if="result" class="card pending stack">
+      <p class="eyebrow">Заявка отправлена</p>
+      <p class="pending__lead">Ожидает подтверждения администратора</p>
+      <p class="text-muted">
+        Начисление появится после проверки. До этого контейнер и ваш баланс не меняются.
+      </p>
+      <dl class="pending__facts">
+        <div>
+          <dt>Вес</dt>
+          <dd class="metric">{{ formatNumber(result.wasteWeightGrams) }} г</dd>
+        </div>
+        <div>
+          <dt>Статус</dt>
+          <dd><StatusBadge :status="result.status" kind="deposit" /></dd>
+        </div>
+      </dl>
       <div class="row">
         <BaseButton @click="reset">Сдать ещё</BaseButton>
         <RouterLink :to="{ name: 'profile' }">
@@ -147,21 +168,22 @@ onMounted(containers.run)
 
             <label class="field">
               Вес отходов, граммы
-              <input v-model.number="form.wasteWeightGrams" type="number" min="1" />
-            </label>
-
-            <label class="field">
-              Насколько заполнился контейнер, %
               <input
-                v-model.number="form.addedFullnessPercentage"
+                v-model.number="form.wasteWeightGrams"
                 type="number"
                 min="1"
-                max="100"
+                :max="MAX_DEPOSIT_GRAMS"
               />
+              <span v-if="weightError" class="field__error">{{ weightError }}</span>
+              <span v-else-if="freeCapacity != null" class="text-muted field__hint">
+                Свободно {{ formatNumber(freeCapacity) }} г из
+                {{ formatNumber(selected.capacityGrams) }} г
+              </span>
             </label>
 
             <p class="estimate">
-              Примерно <span class="metric">+{{ estimatedCoins }}</span> EcoCoins
+              После подтверждения — примерно
+              <span class="metric">+{{ estimatedCoins }}</span> EcoCoins
               <span class="text-muted">— точную сумму рассчитает сервер</span>
             </p>
 
@@ -285,14 +307,41 @@ h3 {
   font-size: var(--text-sm);
 }
 
-.success {
-  border-color: var(--c-moss);
-  background: var(--c-moss-soft);
+.pending {
+  border-color: var(--c-coin);
+  background: var(--c-coin-soft);
 }
 
-.success__coins {
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  color: var(--c-moss-dark);
+.pending .eyebrow {
+  color: var(--c-coin);
+}
+
+.pending__lead {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--c-coin);
+}
+
+.pending__facts {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-3) 0;
+}
+
+.pending__facts dt {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-ink-muted);
+}
+
+.field__error {
+  color: var(--c-danger);
+  font-size: var(--text-sm);
+}
+
+.field__hint {
+  font-size: var(--text-xs);
 }
 </style>
