@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { adminApi } from '@/api/admin'
 import { useAsync } from '@/composables/useAsync'
-import { useEcoContainerSocket } from '@/composables/useEcoContainerSocket'
 import { formatNumber } from '@/utils/format'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StateBlock from '@/components/common/StateBlock.vue'
@@ -12,7 +11,6 @@ import BaseButton from '@/components/common/BaseButton.vue'
 const dashboard = useAsync(adminApi.dashboard)
 const vacancies = useAsync(() => adminApi.vacancies(0, 20))
 
-const alerts = ref([])
 const toggling = ref(null)
 const actionError = ref('')
 
@@ -21,22 +19,6 @@ const actionError = ref('')
  * above 90%. The payload is a string today and a JSON object in the newer
  * backend, so both shapes are rendered.
  */
-const { connected } = useEcoContainerSocket({
-  onAlert(payload) {
-    const entry =
-      typeof payload === 'string'
-        ? { id: Date.now(), text: payload }
-        : {
-            id: `${payload.containerId}-${payload.crossedAt}`,
-            text: `«${payload.title}» заполнен на ${payload.currentFullnessPercentage}%`,
-            detail:
-              payload.currentWeightGrams != null && payload.capacityGrams != null
-                ? `${payload.currentWeightGrams} / ${payload.capacityGrams} г`
-                : '',
-          }
-    alerts.value = [entry, ...alerts.value].slice(0, 5)
-  },
-})
 
 async function toggleVacancy(vacancy) {
   toggling.value = vacancy.id
@@ -83,20 +65,6 @@ const metrics = [
 <template>
   <div class="stack">
     <PageHeader eyebrow="Администрирование" title="Панель управления" />
-
-    <p v-if="!connected" class="ws-state">
-      Нет соединения с сервером обновлений — заполненность может быть неактуальной.
-    </p>
-
-    <div v-if="alerts.length" class="alerts">
-      <p class="eyebrow">Контейнеры требуют вывоза</p>
-      <ul>
-        <li v-for="alert in alerts" :key="alert.id">
-          {{ alert.text }}
-          <span v-if="alert.detail" class="metric alerts__detail">{{ alert.detail }}</span>
-        </li>
-      </ul>
-    </div>
 
     <nav class="sections">
       <RouterLink
@@ -165,37 +133,6 @@ const metrics = [
 </template>
 
 <style scoped>
-.ws-state {
-  padding: var(--space-3);
-  background: var(--c-surface-sunk);
-  border-radius: var(--radius-sm);
-  color: var(--c-ink-muted);
-  font-size: var(--text-sm);
-}
-
-.alerts {
-  padding: var(--space-4);
-  background: var(--c-danger-soft);
-  border: 1px solid var(--c-danger);
-  border-radius: var(--radius);
-  color: var(--c-danger);
-}
-
-.alerts .eyebrow {
-  color: var(--c-danger);
-}
-
-.alerts ul {
-  margin-top: var(--space-2);
-  padding-left: var(--space-4);
-  font-size: var(--text-sm);
-}
-
-.alerts__detail {
-  margin-left: var(--space-2);
-  opacity: 0.8;
-}
-
 .sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
