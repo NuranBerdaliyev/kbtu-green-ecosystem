@@ -19,9 +19,9 @@ useEcoContainerSocket({
       typeof payload === 'string'
         ? { text: payload, detail: '' }
         : {
-          text: `Контейнер «${payload.title}» требует вывоза`,
-          detail: `${payload.previousFullnessPercentage}% → ${payload.currentFullnessPercentage}% · ${payload.currentWeightGrams} / ${payload.capacityGrams} г`,
-        }
+            text: `Контейнер «${payload.title}» требует вывоза`,
+            detail: `${payload.previousFullnessPercentage}% → ${payload.currentFullnessPercentage}% · ${payload.currentWeightGrams} / ${payload.capacityGrams} г`,
+          }
 
     if (hideTimer) window.clearTimeout(hideTimer)
     hideTimer = window.setTimeout(hide, 12_000)
@@ -39,9 +39,7 @@ onUnmounted(() => {
       <p class="admin-alert__title">{{ notice.text }}</p>
       <p v-if="notice.detail" class="admin-alert__detail">{{ notice.detail }}</p>
     </div>
-    <button type="button" class="admin-alert__close" aria-label="Закрыть" @click="hide">
-      ×
-    </button>
+    <button type="button" class="admin-alert__close" aria-label="Закрыть" @click="hide">×</button>
   </aside>
 </template>
 
